@@ -85,6 +85,13 @@
   .seg button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
   .muted{color:var(--muted);font-size:13px;line-height:1.5;}
   .sent{color:#6ee7b7;font-size:12px;}
+  .list .item.seat-full{background:rgba(5,150,105,0.14);border-right:4px solid #10b981;border-radius:10px;padding-right:10px;padding-left:6px;margin-top:4px;}
+  .list .item.seat-part{background:rgba(217,119,6,0.14);border-right:4px solid #f59e0b;border-radius:10px;padding-right:10px;padding-left:6px;margin-top:4px;}
+  .seat-full input.name-edit{color:#6ee7b7;}
+  .seat-part input.name-edit{color:#fcd34d;}
+  .seat-tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px;margin-bottom:4px;}
+  .seat-full .seat-tag{background:#064e3b;color:#6ee7b7;}
+  .seat-part .seat-tag{background:#78350f;color:#fde68a;}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111827;border:1px solid var(--accent2);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10;}
   .toast.show{opacity:1;}
   .footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px;}
@@ -504,6 +511,14 @@
   var statusLabel = { invited: 'הוזמנו', yes: 'נרשמו', no: 'לא מגיעים' };
   var statusClass = { invited: 'p-invited', yes: 'p-yes', no: 'p-no' };
 
+  // מלא = כל מי שבא (גברים ו/או נשים) יושב בשולחן; חלקי = רק צד אחד שובץ
+  function seatState(f) {
+    if (f.status === 'no') return '';
+    var need = 0, got = 0;
+    if (int(f.men)) { need++; if (f.menTable) got++; }
+    if (int(f.women)) { need++; if (f.womenTable) got++; }
+    return !got ? '' : got === need ? 'seat-full' : 'seat-part';
+  }
   function tableName(id) { var t = id ? findById(state.tables, id) : null; return t ? t.name : ''; }
   function stepper(f, field, label) {
     return '<span class="step">' + label +
@@ -527,7 +542,9 @@
       var seats = [];
       if (f.menTable) seats.push('👨 ' + esc(tableName(f.menTable)));
       if (f.womenTable) seats.push('👩 ' + esc(tableName(f.womenTable)));
-      html += '<div class="item"><div class="main">' +
+      var ss = seatState(f);
+      html += '<div class="item' + (ss ? ' ' + ss : '') + '"><div class="main">' +
+        (ss === 'seat-full' ? '<span class="seat-tag">✓ שובצו</span>' : ss === 'seat-part' ? '<span class="seat-tag">◐ שובצו חלקית</span>' : '') +
         '<input class="name-edit" data-act="name" data-id="' + f.id + '" value="' + esc(f.name) + '" aria-label="שם">' +
         '<div class="qty">' + stepper(f, 'men', 'גברים') + stepper(f, 'women', 'נשים') + '<span class="step">סה״כ <b style="color:var(--text)">' + peopleOf(f) + '</b></span></div>' +
         '<div class="s">' + (f.group ? 'משפחת ' + esc(f.group) : 'ללא קשר משפחתי') +
@@ -711,10 +728,23 @@
     persist(); toast(count > 1 ? 'נוספו ' + count + ' שולחנות' : 'השולחן נוסף');
   });
 
+  // שמות המשפחות שיושבות בשולחן, לתצוגה ברשימת השיבוץ
+  function tableFamilies(t, sec) {
+    var key = SECTIONS[sec].table, names = [];
+    state.families.forEach(function (f) {
+      if (f[key] !== t.id || f.status === 'no') return;
+      var n = f.group || f.name;
+      if (names.indexOf(n) === -1) names.push(n);
+    });
+    if (t.group && names.indexOf(t.group) === -1) names.unshift(t.group);
+    return names.length > 3 ? names.slice(0, 3).join(', ') + '…' : names.join(', ');
+  }
+
   function tableOptions(sec) {
     var o = '<option value="">— שבץ לשולחן —</option>';
     state.tables.filter(function (t) { return t.section === sec; }).forEach(function (t) {
-      o += '<option value="' + t.id + '">' + esc(t.name) + ' (' + seatedCount(t.id, sec) + '/' + t.cap + ')</option>';
+      var who = tableFamilies(t, sec);
+      o += '<option value="' + t.id + '">' + esc(t.name) + (who ? ' · ' + esc(who) : ' · פנוי') + ' (' + seatedCount(t.id, sec) + '/' + t.cap + ')</option>';
     });
     return o;
   }
