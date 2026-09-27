@@ -171,17 +171,19 @@
       <button type="button" data-sec="men" class="active">👨 גברים</button>
       <button type="button" data-sec="women">👩 נשים</button>
     </div>
+    <div class="card" id="hallSummary"></div>
     <div class="card muted">
-      🪄 <b>שיבוץ אוטומטי:</b> כשנרשמות 2 משפחות או יותר עם אותו שם משפחה, הן משובצות יחד לשולחן על שם המשפחה.
+      🪄 <b>שיבוץ אוטומטי:</b> כשנרשמות 2 משפחות או יותר עם אותו שם משפחה, הן מקבלות יחד שולחן פנוי באולם.
       מי שאין לו עדיין קרוב רשום נשאר ברשימת "לא הושבו", ואתה משבץ אותו ידנית.
     </div>
     <form class="card" id="tableForm" autocomplete="off" novalidate>
-      <h2 id="tableFormTitle">הוספת שולחן — גברים</h2>
+      <h2 id="tableFormTitle">הוספת שולחנות — גברים</h2>
       <div class="row">
-        <div><label for="tName">שם / מספר שולחן *</label><input id="tName" type="text" placeholder="עגול 1"></div>
-        <div><label for="tCap">מקומות</label><input id="tCap" type="number" inputmode="numeric" min="1" value="12"></div>
+        <div><label for="tCount">כמה שולחנות</label><input id="tCount" type="number" inputmode="numeric" min="1" value="1"></div>
+        <div><label for="tCap">מקומות בכל שולחן</label><input id="tCap" type="number" inputmode="numeric" min="1" value="12"></div>
+        <div><label for="tName">שם (לא חובה)</label><input id="tName" type="text" placeholder="ממוספר אוטומטית"></div>
       </div>
-      <button type="submit" class="btn full">➕ הוסף שולחן</button>
+      <button type="submit" class="btn full">➕ הוסף</button>
     </form>
     <div id="tableList"></div>
     <div class="card">
@@ -629,13 +631,16 @@
   }
 
   // שיבוץ אוטומטי: רק משפחות שנרשמו ויש להן לפחות קרוב רשום נוסף (אותו שם משפחה).
-  // לא מזיז אף אחד שכבר שובץ, ולא משבץ מחדש מי שהוסר ידנית משולחן.
+  // משתמש רק בשולחנות הקיימים באולם (לא יוצר חדשים), לא מזיז אף אחד שכבר שובץ,
+  // ולא משבץ מחדש מי שהוסר ידנית משולחן. אם אין שולחן פנוי מתאים — נשאר לשיבוץ ידני.
   function autoSeat() {
     Object.keys(SECTIONS).forEach(function (sec) {
       var key = SECTIONS[sec].table, manual = SECTIONS[sec].manual;
       state.families.forEach(function (f) {
-        if (f[key] && (f.status === 'no' || !countIn(f, sec))) f[key] = '';
+        if (f[key] && (f.status === 'no' || !countIn(f, sec) || !findById(state.tables, f[key]))) f[key] = '';
       });
+      // שולחן שהתרוקן משחרר את שיוך המשפחה שלו
+      state.tables.forEach(function (t) { if (t.section === sec && t.group && !seatedCount(t.id, sec)) t.group = ''; });
       var groups = {};
       state.families.forEach(function (f) {
         if (f.status !== 'yes' || !f.group || !countIn(f, sec)) return;
@@ -654,11 +659,15 @@
             if ((mates.indexOf(t.id) !== -1 || t.group === g) && seatedCount(t.id, sec) + need <= t.cap) target = t;
           });
           if (!target) {
-            var n = state.tables.filter(function (t) { return t.section === sec && t.group === g; }).length;
-            target = { id: uid(), name: g + (n ? ' ' + (n + 1) : ''), cap: Math.max(12, need), section: sec, group: g };
-            state.tables.push(target);
+            // שולחן ריק: הקטן ביותר שמכיל את כל הקרובים שממתינים, אחרת הגדול ביותר שמכיל לפחות את המשפחה הזו
+            var groupNeed = fams.reduce(function (s, o) { return s + (o[key] || o[manual] ? 0 : countIn(o, sec)); }, 0);
+            var empties = state.tables.filter(function (t) { return t.section === sec && !t.group && !seatedCount(t.id, sec); })
+              .sort(function (a, b) { return a.cap - b.cap; });
+            for (var i = 0; i < empties.length && !target; i++) if (empties[i].cap >= groupNeed) target = empties[i];
+            for (var j = empties.length - 1; j >= 0 && !target; j--) if (empties[j].cap >= need) target = empties[j];
+            if (target) target.group = g;
           }
-          f[key] = target.id;
+          if (target) f[key] = target.id;
         });
       });
     });
@@ -683,11 +692,13 @@
 
   $('tableForm').addEventListener('submit', function (e) {
     e.preventDefault();
-    var name = $('tName').value.trim();
-    if (!name) { toast('יש להזין שם שולחן'); return; }
-    state.tables.push({ id: uid(), name: name, cap: int($('tCap').value) || 12, section: curSec });
-    $('tName').value = '';
-    persist(); toast('השולחן נוסף');
+    var name = $('tName').value.trim(), count = Math.min(50, int($('tCount').value) || 1), cap = int($('tCap').value) || 12;
+    var n = state.tables.filter(function (t) { return t.section === curSec; }).length;
+    for (var i = 0; i < count; i++) {
+      state.tables.push({ id: uid(), name: name ? name + (count > 1 ? ' ' + (i + 1) : '') : 'שולחן ' + (n + i + 1), cap: cap, section: curSec });
+    }
+    $('tName').value = ''; $('tCount').value = '1';
+    persist(); toast(count > 1 ? 'נוספו ' + count + ' שולחנות' : 'השולחן נוסף');
   });
 
   function tableOptions(sec) {
@@ -699,12 +710,24 @@
   }
   function renderSeating() {
     var sec = curSec, key = SECTIONS[sec].table, label = SECTIONS[sec].label, html = '';
-    $('tableFormTitle').textContent = 'הוספת שולחן — ' + label;
+    $('tableFormTitle').textContent = 'הוספת שולחנות — ' + label;
     var tables = state.tables.filter(function (t) { return t.section === sec; });
+
+    // סיכום אולם: מקומות מול רשומים
+    var seats = tables.reduce(function (s, t) { return s + int(t.cap); }, 0);
+    var reg = state.families.reduce(function (s, f) { return s + (f.status === 'yes' ? countIn(f, sec) : 0); }, 0);
+    var seatedNow = tables.reduce(function (s, t) { return s + seatedCount(t.id, sec); }, 0);
+    var sizes = {};
+    tables.forEach(function (t) { sizes[t.cap] = (sizes[t.cap] || 0) + 1; });
+    var sizeTxt = Object.keys(sizes).sort(function (a, b) { return b - a; }).map(function (c) { return sizes[c] + ' × ' + c; }).join(' + ');
+    $('hallSummary').innerHTML = '<h2>🏛️ אולם — ' + label + '</h2>' +
+      '<div class="muted">' + (tables.length ? tables.length + ' שולחנות (' + sizeTxt + ') = <b style="color:var(--text)">' + seats + ' מקומות</b>' : 'עדיין לא הוגדרו שולחנות') +
+      '<br>רשומים: <b style="color:var(--text)">' + reg + '</b> · הושבו: ' + seatedNow + ' · מקומות פנויים: ' + Math.max(0, seats - seatedNow) + '</div>' +
+      (tables.length && reg > seats ? '<div class="banner show" style="margin:8px 0 0">⚠️ חסרים <b>' + (reg - seats) + '</b> מקומות ב' + label + ' — ' + reg + ' רשומים מול ' + seats + ' מקומות.</div>' : '');
     tables.forEach(function (t) {
       var n = seatedCount(t.id, sec), pct = t.cap ? Math.min(100, n / t.cap * 100) : 0;
       var fams = state.families.filter(function (f) { return f[key] === t.id && f.status !== 'no'; }).sort(byName);
-      html += '<div class="card"><div class="item" style="border:0;padding:0"><div class="main"><div class="t">🪑 ' + esc(t.name) + (t.group ? ' <span class="muted">· אוטומטי</span>' : '') + '</div>' +
+      html += '<div class="card"><div class="item" style="border:0;padding:0"><div class="main"><div class="t">🪑 ' + esc(t.name) + (t.group ? ' <span class="muted">· משפחת ' + esc(t.group) + ' (אוטומטי)</span>' : '') + '</div>' +
         '<div class="s">' + n + ' מתוך ' + t.cap + ' מקומות' + (n > t.cap ? ' · <b style="color:#fca5a5">חריגה!</b>' : '') + '</div></div>' +
         '<div class="acts"><button type="button" class="btn sec sm" data-act="edittable" data-id="' + t.id + '">✏️</button>' +
         '<button type="button" class="btn sec sm" data-act="deltable" data-id="' + t.id + '">🗑️</button></div></div>' +
