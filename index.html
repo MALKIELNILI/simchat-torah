@@ -420,7 +420,12 @@
   }
   function byName(a, b) { return a.name.localeCompare(b.name, 'he'); }
 
-  function persist() { autoSeat(); saveRaw(state); pushRemote(); render(); }
+  function persist() { autoSeat(); saveRaw(state); pushRemote(); render(); announceMoves(); }
+  function announceMoves() {
+    if (!seatMoves.length) return;
+    toast('🔀 ' + seatMoves.join(' · '));
+    seatMoves = [];
+  }
 
   var toastTimer;
   function toast(msg) {
@@ -468,6 +473,7 @@
         if (rTs > lTs) {
           state = normalize(remote);
           if (autoSeatChanged()) { persist(); storageReport(); return; }
+          seatMoves = [];
           saveRaw(state, true);
           render(); storageReport();
         } else if (lTs > rTs) {
@@ -722,6 +728,12 @@
           var need = countIn(f, sec), target = null;
           // קודם שולחן שכבר יושבים בו קרובים, אחר כך שולחן על שם המשפחה
           var mates = fams.filter(function (o) { return o[key]; }).map(function (o) { return o[key]; });
+          // אם השולחן של הקרובים קטן מדי — מעבירים את כולם לשולחן ריק גדול יותר, במקום לפצל את המשפחה
+          var home = mates.length ? findById(state.tables, mates[0]) : null;
+          if (home && seatedCount(home.id, sec) + need > home.cap) {
+            var bigger = emptyTableFor(sec, seatedCount(home.id, sec) + need);
+            if (bigger) { moveTable(home, bigger, sec); target = bigger; }
+          }
           state.tables.forEach(function (t) {
             if (target || t.section !== sec) return;
             if ((mates.indexOf(t.id) !== -1 || t.group === g) && seatedCount(t.id, sec) + need <= t.cap) target = t;
@@ -738,7 +750,33 @@
           if (target) f[key] = target.id;
         });
       });
+      // שולחן בחריגה (למשל 14 איש בשולחן של 12) עובר כולו לשולחן ריק שמכיל את כולם
+      state.tables.forEach(function (t) {
+        if (t.section !== sec) return;
+        var n = seatedCount(t.id, sec);
+        if (n <= t.cap) return;
+        var to = emptyTableFor(sec, n);
+        if (to) moveTable(t, to, sec);
+      });
     });
+  }
+
+  // השולחן הריק הקטן ביותר בצד הזה שיש בו לפחות need מקומות
+  function emptyTableFor(sec, need) {
+    var best = null;
+    state.tables.forEach(function (t) {
+      if (t.section !== sec || t.group || seatedCount(t.id, sec) || t.cap < need) return;
+      if (!best || t.cap < best.cap) best = t;
+    });
+    return best;
+  }
+  var seatMoves = [];
+  function moveTable(from, to, sec) {
+    var key = SECTIONS[sec].table;
+    state.families.forEach(function (f) { if (f[key] === from.id) f[key] = to.id; });
+    to.group = from.group || '';
+    from.group = '';
+    seatMoves.push((to.group ? 'משפחת ' + to.group : 'היושבים ב' + from.name) + ' (' + SECTIONS[sec].label + ') הועברו מ' + from.name + ' (' + from.cap + ') ל' + to.name + ' (' + to.cap + ')');
   }
 
   // מריץ שיבוץ אוטומטי ומחזיר true אם משהו השתנה (למשל אחרי טעינת נתונים מהענן)
@@ -785,7 +823,7 @@
     var o = '<option value="">— שבץ לשולחן —</option>';
     state.tables.filter(function (t) { return t.section === sec; }).forEach(function (t) {
       var who = tableFamilies(t, sec);
-      o += '<option value="' + t.id + '">' + esc(t.name) + (who ? ' · ' + esc(who) : ' · פנוי') + ' (' + seatedCount(t.id, sec) + '/' + t.cap + ')</option>';
+      o += '<option value="' + t.id + '">' + esc(t.name) + (who ? ' · ' + esc(who) : ' · פנוי') + ' (' + seatedCount(t.id, sec) + '/' + t.cap + (seatedCount(t.id, sec) > t.cap ? ' ⚠️ חריגה ' + (seatedCount(t.id, sec) - t.cap) : '') + ')</option>';
     });
     return o;
   }
@@ -798,18 +836,22 @@
     var seats = tables.reduce(function (s, t) { return s + int(t.cap); }, 0);
     var reg = state.families.reduce(function (s, f) { return s + (f.status === 'yes' ? countIn(f, sec) : 0); }, 0);
     var seatedNow = tables.reduce(function (s, t) { return s + seatedCount(t.id, sec); }, 0);
+    var over = tables.filter(function (t) { return seatedCount(t.id, sec) > t.cap; });
+    var overTxt = over.length ? '<div class="banner show" style="margin:8px 0 0">⚠️ חריגה: ' + over.map(function (t) { return esc(t.name) + ' (' + t.cap + ') — עודף ' + (seatedCount(t.id, sec) - t.cap); }).join(' · ') + '</div>' : '';
     var sizes = {};
     tables.forEach(function (t) { sizes[t.cap] = (sizes[t.cap] || 0) + 1; });
     var sizeTxt = Object.keys(sizes).sort(function (a, b) { return b - a; }).map(function (c) { return sizes[c] + ' × ' + c; }).join(' + ');
     $('hallSummary').innerHTML = '<h2>🏛️ אולם — ' + label + '</h2>' +
       '<div class="muted">' + (tables.length ? tables.length + ' שולחנות (' + sizeTxt + ') = <b style="color:var(--text)">' + seats + ' מקומות</b>' : 'עדיין לא הוגדרו שולחנות') +
       '<br>רשומים: <b style="color:var(--text)">' + reg + '</b> · הושבו: ' + seatedNow + ' · מקומות פנויים: ' + Math.max(0, seats - seatedNow) + '</div>' +
+      overTxt +
       (tables.length && reg > seats ? '<div class="banner show" style="margin:8px 0 0">⚠️ חסרים <b>' + (reg - seats) + '</b> מקומות ב' + label + ' — ' + reg + ' רשומים מול ' + seats + ' מקומות.</div>' : '');
     tables.forEach(function (t) {
       var n = seatedCount(t.id, sec), pct = t.cap ? Math.min(100, n / t.cap * 100) : 0;
       var fams = state.families.filter(function (f) { return f[key] === t.id && f.status !== 'no'; }).sort(byName);
       html += '<div class="card"><div class="item" style="border:0;padding:0"><div class="main"><div class="t">🪑 ' + esc(t.name) + (t.group ? ' <span class="muted">· משפחת ' + esc(t.group) + ' (אוטומטי)</span>' : '') + '</div>' +
-        '<div class="s">' + n + ' מתוך ' + t.cap + ' מקומות' + (n > t.cap ? ' · <b style="color:#fca5a5">חריגה!</b>' : '') + '</div></div>' +
+        '<div class="s">' + n + ' מתוך ' + t.cap + ' מקומות' + (n > t.cap ? ' · <b style="color:#fca5a5">⚠️ חריגה של ' + (n - t.cap) + ' — ' +
+          (emptyTableFor(sec, n) ? 'יש שולחן פנוי מתאים' : 'אין שולחן פנוי גדול מספיק, צריך להעביר משפחה ידנית') + '</b>' : '') + '</div></div>' +
         '<div class="acts"><button type="button" class="btn sec sm" data-act="edittable" data-id="' + t.id + '">✏️</button>' +
         '<button type="button" class="btn sec sm" data-act="deltable" data-id="' + t.id + '">🗑️</button></div></div>' +
         '<div class="bar"><div class="' + (n > t.cap ? 'over' : '') + '" style="width:' + pct + '%"></div></div><div class="list" style="margin-top:6px">';
@@ -868,7 +910,7 @@
         '<h2>' + label + ' · ' + tables.length + ' שולחנות · ' + seated + ' מתוך ' + seats + ' מקומות</h2><div class="grid">';
       tables.forEach(function (t) {
         var fams = state.families.filter(function (f) { return f[key] === t.id && f.status !== 'no'; }).sort(byName);
-        html += '<div class="tb"><h3><span>' + esc(t.name) + (t.group ? ' · ' + esc(t.group) : '') + '</span><small>' + seatedCount(t.id, sec) + '/' + t.cap + '</small></h3>';
+        html += '<div class="tb"><h3><span>' + esc(t.name) + (t.group ? ' · ' + esc(t.group) : '') + '</span><small>' + seatedCount(t.id, sec) + '/' + t.cap + (seatedCount(t.id, sec) > t.cap ? ' · חריגה ' + (seatedCount(t.id, sec) - t.cap) : '') + '</small></h3>';
         fams.forEach(function (f) { html += '<div><span>' + esc(f.name) + '</span><span>' + countIn(f, sec) + '</span></div>'; });
         if (!fams.length) html += '<div class="empty">— פנוי —</div>';
         html += '</div>';
@@ -905,7 +947,7 @@
     tables.forEach(function (t) {
       var fams = state.families.filter(function (f) { return f[key] === t.id && f.status !== 'no'; }).sort(byName);
       if (!fams.length) { empty.push(t.name + ' (' + t.cap + ')'); return; }
-      lines.push('*' + t.name + (t.group ? ' · ' + t.group : '') + '* (' + seatedCount(t.id, sec) + '/' + t.cap + ')');
+      lines.push('*' + t.name + (t.group ? ' · ' + t.group : '') + '* (' + seatedCount(t.id, sec) + '/' + t.cap + ')' + (seatedCount(t.id, sec) > t.cap ? ' ⚠️ חריגה ' + (seatedCount(t.id, sec) - t.cap) : ''));
       fams.forEach(function (f) { lines.push('• ' + f.name + ' – ' + countIn(f, sec)); });
       lines.push('');
     });
@@ -1066,6 +1108,7 @@
   resetFamilyForm();
   storageReport();
   render();
+  announceMoves();
   initSync();
 
   if ('serviceWorker' in navigator && !isFile) {
