@@ -1,4 +1,4 @@
-const CACHE = 'simchat-torah-v1';
+const CACHE = 'simchat-torah-v2';
 self.addEventListener('install', e => {
   self.skipWaiting();
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(['./index.html', './manifest.json', './icon-192.png', './icon-512.png'])));
