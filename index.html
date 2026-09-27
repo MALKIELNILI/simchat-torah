@@ -233,6 +233,15 @@
       </div>
       <div class="muted" style="margin-top:6px">מדפיס את שני הצדדים, גברים ונשים. בטלפון אפשר לבחור "שמור כ-PDF" ולשלוח בוואטסאפ.</div>
     </div>
+    <div class="card">
+      <h2>📲 שליחה בוואטסאפ</h2>
+      <div class="row">
+        <button type="button" class="btn wa" data-wa="men">שולחנות גברים</button>
+        <button type="button" class="btn wa" data-wa="women">שולחנות נשים</button>
+        <button type="button" class="btn wa" data-wa="names">לפי שם</button>
+      </div>
+      <div class="muted" style="margin-top:6px">נפתח וואטסאפ עם הרשימה כטקסט, ובוחרים למי לשלוח.</div>
+    </div>
     <div id="tableList"></div>
     <div class="card">
       <h2 id="unseatedTitle">לא הושבו</h2>
@@ -886,6 +895,43 @@
     $('printArea').innerHTML = html;
     setTimeout(function () { window.print(); }, 50);
   }
+  // ---------- שליחת הרשימות בוואטסאפ (טקסט) ----------
+  function tablesText(sec) {
+    var key = SECTIONS[sec].table, label = SECTIONS[sec].label;
+    var tables = state.tables.filter(function (t) { return t.section === sec; });
+    var seats = tables.reduce(function (s, t) { return s + int(t.cap); }, 0);
+    var seated = tables.reduce(function (s, t) { return s + seatedCount(t.id, sec); }, 0);
+    var lines = ['*סעודת שמחת תורה — שולחנות ' + label + '*', seated + ' מתוך ' + seats + ' מקומות', ''], empty = [];
+    tables.forEach(function (t) {
+      var fams = state.families.filter(function (f) { return f[key] === t.id && f.status !== 'no'; }).sort(byName);
+      if (!fams.length) { empty.push(t.name + ' (' + t.cap + ')'); return; }
+      lines.push('*' + t.name + (t.group ? ' · ' + t.group : '') + '* (' + seatedCount(t.id, sec) + '/' + t.cap + ')');
+      fams.forEach(function (f) { lines.push('• ' + f.name + ' – ' + countIn(f, sec)); });
+      lines.push('');
+    });
+    if (empty.length) lines.push('*פנויים:* ' + empty.join(', '));
+    var un = state.families.filter(function (f) { return !f[key] && f.status === 'yes' && countIn(f, sec); }).sort(byName);
+    if (un.length) lines.push('*טרם שובצו:* ' + un.map(function (f) { return f.name + ' (' + countIn(f, sec) + ')'; }).join(', '));
+    return lines.join('\n').trim();
+  }
+  function namesText() {
+    var lines = ['*סעודת שמחת תורה — מי באיזה שולחן*', ''];
+    state.families.filter(function (f) { return f.status !== 'no' && peopleOf(f); }).sort(byName).forEach(function (f) {
+      var parts = [];
+      if (int(f.men)) parts.push('👨 ' + (f.menTable ? tableName(f.menTable) : 'טרם שובץ'));
+      if (int(f.women)) parts.push('👩 ' + (f.womenTable ? tableName(f.womenTable) : 'טרם שובץ'));
+      lines.push('• ' + f.name + ' — ' + parts.join(' | '));
+    });
+    return lines.join('\n');
+  }
+  document.querySelectorAll('[data-wa]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var w = b.getAttribute('data-wa');
+      var text = w === 'names' ? namesText() : tablesText(w);
+      window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    });
+  });
+
   $('printTablesBtn').addEventListener('click', printTables);
   $('printNamesBtn').addEventListener('click', printNames);
 
