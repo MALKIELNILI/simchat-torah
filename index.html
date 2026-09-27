@@ -33,6 +33,11 @@
   .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 4px;text-align:center;}
   .stat .v{font-size:19px;font-weight:800;}
   .stat .l{font-size:12px;color:var(--muted);margin-top:2px;}
+  .seats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:-6px 0 14px;}
+  .seat{padding:10px 8px;}
+  .seat .h{font-size:13px;color:var(--muted);font-weight:700;}
+  .seat .v{font-size:24px;color:#6ee7b7;}
+  .seat.short .v{color:#fca5a5;}
   nav{display:flex;gap:4px;margin-bottom:14px;background:var(--card);padding:5px;border-radius:12px;border:1px solid var(--line);}
   nav button{flex:1;background:none;border:0;color:var(--muted);font:inherit;font-size:14px;font-weight:700;padding:10px 2px;border-radius:9px;cursor:pointer;}
   nav button.active{background:var(--accent);color:#fff;}
@@ -103,6 +108,11 @@
     <div class="stat"><div class="v" id="stWomen">0</div><div class="l">נשים</div></div>
     <div class="stat"><div class="v" id="stSeated">0</div><div class="l">הושבו</div></div>
     <div class="stat"><div class="v" id="stSpent">0</div><div class="l">הוצאות ₪</div></div>
+  </div>
+
+  <div class="seats">
+    <div class="stat seat" id="seatMen"></div>
+    <div class="stat seat" id="seatWomen"></div>
   </div>
 
   <nav id="tabs">
@@ -862,6 +872,16 @@
     $('stSeated').textContent = state.families.reduce(function (s, f) {
       return s + (f.status === 'no' ? 0 : (f.menTable ? int(f.men) : 0) + (f.womenTable ? int(f.women) : 0));
     }, 0);
+    // משבצות מקומות: סך המקומות בשולחנות מול הרשומים, לכל מגדר
+    Object.keys(SECTIONS).forEach(function (sec) {
+      var seats = state.tables.reduce(function (s, t) { return s + (t.section === sec ? int(t.cap) : 0); }, 0);
+      var reg = yes.reduce(function (s, f) { return s + int(f[sec]); }, 0), left = seats - reg;
+      var el = $(sec === 'men' ? 'seatMen' : 'seatWomen');
+      el.className = 'stat seat' + (left < 0 ? ' short' : '');
+      el.innerHTML = '<div class="h">' + (sec === 'men' ? '👨 גברים' : '👩 נשים') + ' — ' + (left < 0 ? 'חסרים' : 'נשארו') + '</div>' +
+        '<div class="v">' + Math.abs(left) + '</div>' +
+        '<div class="l">' + seats + ' מקומות · ' + reg + ' רשומים</div>';
+    });
     $('stSpent').textContent = fmt(state.expenses.reduce(function (s, x) { return s + num(x.amount); }, 0));
     $('familyNames').innerHTML = state.families.slice().sort(byName).map(function (f) { return '<option value="' + esc(f.name) + '">'; }).join('');
     renderFamilies(); renderInvites(); renderSeating(); renderBudget();
