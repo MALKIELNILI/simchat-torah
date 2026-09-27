@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#4338ca">
+<title>סעודת שמחת תורה</title>
+<style>
+  :root{
+    --bg:#0f172a; --card:#1e293b; --card2:#26364d; --line:rgba(255,255,255,0.08);
+    --accent:#4338ca; --accent2:#6366f1; --ok:#059669; --warn:#d97706; --bad:#dc2626;
+    --gold:#fde68a; --text:#f1f5f9; --muted:#94a3b8;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+    background:linear-gradient(160deg,#0f172a,#1e293b 60%,#0f172a);color:var(--text);min-height:100vh;
+    padding:20px 16px 60px;-webkit-tap-highlight-color:transparent;}
+  .wrap{max-width:760px;margin:0 auto;}
+  header{text-align:center;margin-bottom:16px;}
+  header .eyebrow{color:var(--gold);font-size:13px;font-weight:700;letter-spacing:1px;}
+  header h1{margin:4px 0 0;font-size:24px;font-weight:800;}
+  .banner{display:none;background:#78350f;border:1px solid #d97706;color:#fef3c7;border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px;line-height:1.5;}
+  .banner.show{display:block;}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 6px;text-align:center;}
+  .stat .v{font-size:20px;font-weight:800;}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:2px;}
+  nav{display:flex;gap:6px;margin-bottom:14px;background:var(--card);padding:5px;border-radius:12px;border:1px solid var(--line);}
+  nav button{flex:1;background:none;border:0;color:var(--muted);font:inherit;font-weight:700;padding:10px 4px;border-radius:9px;cursor:pointer;}
+  nav button.active{background:var(--accent);color:#fff;}
+  section{display:none;}
+  section.active{display:block;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;}
+  .card h2{margin:0 0 10px;font-size:16px;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;}
+  .row > *{flex:1 1 120px;min-width:0;}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px;}
+  input,select,textarea{width:100%;background:#0f172a;border:1px solid #334155;color:var(--text);border-radius:9px;padding:10px;font:inherit;font-size:16px;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent2);border-color:transparent;}
+  .btn{display:inline-block;background:var(--accent);color:#fff;border:0;border-radius:10px;padding:11px 16px;font:inherit;font-weight:700;cursor:pointer;touch-action:manipulation;}
+  .btn:active{transform:scale(0.97);}
+  .btn.sec{background:#334155;}
+  .btn.danger{background:var(--bad);}
+  .btn.sm{padding:6px 10px;font-size:13px;border-radius:8px;}
+  .btn.full{width:100%;margin-top:10px;}
+  .list .item{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);}
+  .list .item:first-child{border-top:0;}
+  .item .main{flex:1;min-width:0;}
+  .item .t{font-weight:700;}
+  .item .s{font-size:13px;color:var(--muted);margin-top:2px;}
+  .pill{font-size:12px;padding:3px 8px;border-radius:99px;font-weight:700;white-space:nowrap;}
+  .p-invited{background:#334155;color:#cbd5e1;}
+  .p-yes{background:#064e3b;color:#6ee7b7;}
+  .p-no{background:#7f1d1d;color:#fecaca;}
+  .empty{color:var(--muted);text-align:center;padding:14px 0;font-size:14px;}
+  .bar{height:8px;background:#0f172a;border-radius:99px;overflow:hidden;margin-top:6px;}
+  .bar > div{height:100%;background:var(--ok);}
+  .bar > div.over{background:var(--bad);}
+  .filter{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+  .filter input{flex:1 1 160px;}
+  .filter select{flex:0 0 130px;}
+  .muted{color:var(--muted);font-size:13px;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111827;border:1px solid var(--accent2);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10;}
+  .toast.show{opacity:1;}
+  .footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px;}
+  @media (max-width:480px){ .stats{grid-template-columns:repeat(2,1fr);} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">📜 שמחת תורה</div>
+    <h1>ניהול הסעודה</h1>
+  </header>
+
+  <div id="storageBanner" class="banner"></div>
+
+  <div class="stats">
+    <div class="stat"><div class="v" id="stFamilies">0</div><div class="l">משפחות</div></div>
+    <div class="stat"><div class="v" id="stPeople">0</div><div class="l">מגיעים</div></div>
+    <div class="stat"><div class="v" id="stSeated">0</div><div class="l">הושבו</div></div>
+    <div class="stat"><div class="v" id="stSpent">0</div><div class="l">הוצאות ₪</div></div>
+  </div>
+
+  <nav id="tabs">
+    <button type="button" data-tab="guests" class="active">אורחים</button>
+    <button type="button" data-tab="seating">הושבה</button>
+    <button type="button" data-tab="budget">תקציב</button>
+    <button type="button" data-tab="backup">גיבוי</button>
+  </nav>
+
+  <!-- אורחים -->
+  <section id="tab-guests" class="active">
+    <form class="card" id="familyForm" autocomplete="off" novalidate>
+      <h2 id="familyFormTitle">הוספת משפחה</h2>
+      <div class="row">
+        <div><label for="fName">שם המשפחה *</label><input id="fName" type="text" placeholder="לדוגמה: משפחת כהן"></div>
+        <div><label for="fPhone">טלפון</label><input id="fPhone" type="tel" inputmode="tel"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label for="fAdults">מבוגרים</label><input id="fAdults" type="number" inputmode="numeric" min="0" value="2"></div>
+        <div><label for="fKids">ילדים</label><input id="fKids" type="number" inputmode="numeric" min="0" value="0"></div>
+        <div><label for="fStatus">סטטוס</label>
+          <select id="fStatus"><option value="invited">הוזמנו</option><option value="yes">מגיעים</option><option value="no">לא מגיעים</option></select></div>
+      </div>
+      <div style="margin-top:8px"><label for="fNotes">הערות</label><input id="fNotes" type="text" placeholder="רגישויות, בקשות מיוחדות..."></div>
+      <input type="hidden" id="fId">
+      <button type="submit" class="btn full" id="familySubmit">➕ הוסף משפחה</button>
+      <button type="button" class="btn sec full" id="familyCancel" style="display:none">ביטול עריכה</button>
+    </form>
+
+    <div class="card">
+      <div class="filter">
+        <input id="guestSearch" type="search" placeholder="חיפוש...">
+        <select id="guestFilter"><option value="all">הכל</option><option value="invited">הוזמנו</option><option value="yes">מגיעים</option><option value="no">לא מגיעים</option></select>
+      </div>
+      <div class="list" id="familyList"></div>
+    </div>
+  </section>
+
+  <!-- הושבה -->
+  <section id="tab-seating">
+    <form class="card" id="tableForm" autocomplete="off" novalidate>
+      <h2>הוספת שולחן</h2>
+      <div class="row">
+        <div><label for="tName">שם / מספר שולחן *</label><input id="tName" type="text" placeholder="שולחן 1"></div>
+        <div><label for="tCap">מקומות</label><input id="tCap" type="number" inputmode="numeric" min="1" value="10"></div>
+      </div>
+      <button type="submit" class="btn full">➕ הוסף שולחן</button>
+    </form>
+    <div id="tableList"></div>
+    <div class="card">
+      <h2>משפחות שעדיין לא הושבו</h2>
+      <div class="list" id="unseatedList"></div>
+    </div>
+  </section>
+
+  <!-- תקציב -->
+  <section id="tab-budget">
+    <div class="card">
+      <h2>תקציב כולל</h2>
+      <div class="row">
+        <div><label for="bTotal">תקציב (₪)</label><input id="bTotal" type="number" inputmode="decimal" min="0"></div>
+      </div>
+      <div class="bar"><div id="budgetBar" style="width:0"></div></div>
+      <div class="muted" id="budgetSummary" style="margin-top:6px"></div>
+    </div>
+    <form class="card" id="expenseForm" autocomplete="off" novalidate>
+      <h2>הוספת הוצאה</h2>
+      <div class="row">
+        <div><label for="eName">פריט *</label><input id="eName" type="text" placeholder="בשר, יין, השכרת כלים..."></div>
+        <div><label for="eAmount">סכום (₪) *</label><input id="eAmount" type="number" inputmode="decimal" min="0" step="any"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label for="eCat">קטגוריה</label>
+          <select id="eCat"><option>אוכל</option><option>שתייה</option><option>כלים וציוד</option><option>אולם וקישוט</option><option>אחר</option></select></div>
+        <div><label for="ePaid">שולם?</label><select id="ePaid"><option value="0">עדיין לא</option><option value="1">שולם</option></select></div>
+      </div>
+      <button type="submit" class="btn full">➕ הוסף הוצאה</button>
+    </form>
+    <div class="card">
+      <div class="list" id="expenseList"></div>
+    </div>
+  </section>
+
+  <!-- גיבוי -->
+  <section id="tab-backup">
+    <div class="card">
+      <h2>מצב שמירה</h2>
+      <div id="storageInfo" class="muted"></div>
+    </div>
+    <div class="card">
+      <h2>גיבוי ושחזור</h2>
+      <p class="muted">מומלץ לשמור קובץ גיבוי מדי פעם, במיוחד בטאבלט. אפשר לשחזר ממנו בכל מכשיר.</p>
+      <button type="button" class="btn full" id="exportBtn">⬇️ שמור קובץ גיבוי</button>
+      <button type="button" class="btn sec full" id="importBtn">⬆️ שחזר מקובץ גיבוי</button>
+      <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+      <button type="button" class="btn sec full" id="copyBtn">📋 העתק גיבוי כטקסט</button>
+      <textarea id="pasteBox" rows="3" placeholder="או הדבק כאן טקסט גיבוי ולחץ 'שחזר מטקסט'" style="margin-top:10px"></textarea>
+      <button type="button" class="btn sec full" id="pasteBtn">שחזר מטקסט</button>
+    </div>
+    <div class="card">
+      <h2>איפוס</h2>
+      <button type="button" class="btn danger full" id="resetBtn">🗑️ מחק את כל הנתונים</button>
+    </div>
+  </section>
+
+  <div class="footer">סעודת שמחת תורה · מלכיאל</div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var KEY = 'simchatTorah.v1';
+  var COOKIE_FALLBACK_MAX = 3500;
+
+  // ---------- שכבת שמירה עמידה ----------
+  // מנסה localStorage, אחר כך sessionStorage, ולבסוף זיכרון בלבד.
+  // בפתיחה כקובץ מקומי (file://) באנדרואיד, localStorage לפעמים חסום או מתאפס בין פתיחות,
+  // ולכן יש גם גיבוי ל-window.name (שורד רענון באותה לשונית) וגיבוי לקובץ.
+  function probe(getter) {
+    try {
+      var s = getter();
+      if (!s) return null;
+      var t = '__probe__' + Date.now();
+      s.setItem(t, '1');
+      var ok = s.getItem(t) === '1';
+      s.removeItem(t);
+      return ok ? s : null;
+    } catch (e) { return null; }
+  }
+  var local = probe(function () { return window.localStorage; });
+  var session = probe(function () { return window.sessionStorage; });
+  var isFile = location.protocol === 'file:';
+  var memory = null;
+
+  function readWindowName() {
+    try {
+      if (window.name && window.name.indexOf(KEY + '=') === 0) return window.name.slice(KEY.length + 1);
+    } catch (e) {}
+    return null;
+  }
+
+  function loadRaw() {
+    var candidates = [];
+    try { if (local) candidates.push(local.getItem(KEY)); } catch (e) {}
+    try { if (session) candidates.push(session.getItem(KEY)); } catch (e) {}
+    candidates.push(readWindowName());
+    candidates.push(memory);
+    // בוחרים את הגרסה העדכנית ביותר מבין המקורות
+    var best = null, bestTs = -1;
+    for (var i = 0; i < candidates.length; i++) {
+      var raw = candidates[i];
+      if (!raw) continue;
+      try {
+        var obj = JSON.parse(raw);
+        var ts = obj && obj.savedAt ? obj.savedAt : 0;
+        if (ts > bestTs) { best = obj; bestTs = ts; }
+      } catch (e) {}
+    }
+    return best;
+  }
+
+  function saveRaw(obj) {
+    obj.savedAt = Date.now();
+    var raw = JSON.stringify(obj);
+    var okLocal = false;
+    memory = raw;
+    try { if (local) { local.setItem(KEY, raw); okLocal = local.getItem(KEY) === raw; } } catch (e) { okLocal = false; }
+    try { if (session) session.setItem(KEY, raw); } catch (e) {}
+    try { window.name = KEY + '=' + raw; } catch (e) {}
+    if (local && !okLocal) showBanner('⚠️ השמירה בזיכרון הדפדפן נכשלה (ייתכן שהאחסון מלא או חסום). שמור קובץ גיבוי בלשונית "גיבוי".');
+    return okLocal;
+  }
+
+  // ---------- נתונים ----------
+  function emptyState() { return { families: [], tables: [], expenses: [], budget: 0, savedAt: 0 }; }
+  var state = loadRaw() || emptyState();
+  if (!state.families) state.families = [];
+  if (!state.tables) state.tables = [];
+  if (!state.expenses) state.expenses = [];
+
+  function uid() {
+    // לא משתמשים ב-crypto.randomUUID: הוא לא קיים בהקשר לא מאובטח (file://) ומפיל את הקוד
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+  function num(v) { var n = parseFloat(v); return isNaN(n) || n < 0 ? 0 : n; }
+  function int(v) { return Math.round(num(v)); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmt(n) { return Math.round(n).toLocaleString('he-IL'); }
+  function $(id) { return document.getElementById(id); }
+  function peopleOf(f) { return int(f.adults) + int(f.kids); }
+
+  function persist() { saveRaw(state); render(); }
+
+  var toastTimer;
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.className = 'toast show';
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.className = 'toast'; }, 1800);
+  }
+  function showBanner(html) { var b = $('storageBanner'); b.innerHTML = html; b.className = 'banner show'; }
+
+  // ---------- לשוניות ----------
+  function showTab(name) {
+    var btns = document.querySelectorAll('#tabs button');
+    for (var i = 0; i < btns.length; i++) btns[i].className = btns[i].getAttribute('data-tab') === name ? 'active' : '';
+    var secs = document.querySelectorAll('section');
+    for (var j = 0; j < secs.length; j++) secs[j].className = secs[j].id === 'tab-' + name ? 'active' : '';
+  }
+  $('tabs').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('button') : e.target;
+    if (b && b.getAttribute('data-tab')) showTab(b.getAttribute('data-tab'));
+  });
+
+  // ---------- משפחות ----------
+  function resetFamilyForm() {
+    $('fId').value = ''; $('fName').value = ''; $('fPhone').value = '';
+    $('fAdults').value = '2'; $('fKids').value = '0'; $('fStatus').value = 'invited'; $('fNotes').value = '';
+    $('familyFormTitle').textContent = 'הוספת משפחה';
+    $('familySubmit').textContent = '➕ הוסף משפחה';
+    $('familyCancel').style.display = 'none';
+  }
+  function submitFamily(e) {
+    if (e) e.preventDefault();
+    var name = $('fName').value.trim();
+    if (!name) { toast('יש להזין שם משפחה'); $('fName').focus(); return; }
+    var data = {
+      name: name, phone: $('fPhone').value.trim(),
+      adults: int($('fAdults').value), kids: int($('fKids').value),
+      status: $('fStatus').value, notes: $('fNotes').value.trim()
+    };
+    var id = $('fId').value;
+    if (id) {
+      for (var i = 0; i < state.families.length; i++) if (state.families[i].id === id) {
+        for (var k in data) state.families[i][k] = data[k];
+      }
+      toast('המשפחה עודכנה');
+    } else {
+      data.id = uid(); data.tableId = '';
+      state.families.push(data);
+      toast('נוספה ' + name);
+    }
+    resetFamilyForm();
+    persist();
+    $('fName').focus();
+  }
+  // מאזינים גם ל-submit וגם ללחיצה ישירה, כך שהכפתור מגיב גם בדפדפנים שבהם שליחת הטופס נחסמת
+  $('familyForm').addEventListener('submit', submitFamily);
+  $('familySubmit').addEventListener('click', function (e) { e.preventDefault(); submitFamily(); });
+  $('familyCancel').addEventListener('click', resetFamilyForm);
+
+  function editFamily(id) {
+    var f = findById(state.families, id); if (!f) return;
+    $('fId').value = f.id; $('fName').value = f.name; $('fPhone').value = f.phone || '';
+    $('fAdults').value = f.adults; $('fKids').value = f.kids; $('fStatus').value = f.status; $('fNotes').value = f.notes || '';
+    $('familyFormTitle').textContent = 'עריכת ' + f.name;
+    $('familySubmit').textContent = '💾 שמור שינויים';
+    $('familyCancel').style.display = 'block';
+    showTab('guests');
+    window.scrollTo(0, 0);
+  }
+  function findById(arr, id) { for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return arr[i]; return null; }
+  function removeById(arr, id) { for (var i = 0; i < arr.length; i++) if (arr[i].id === id) { arr.splice(i, 1); return; } }
+
+  var statusLabel = { invited: 'הוזמנו', yes: 'מגיעים', no: 'לא מגיעים' };
+  var statusClass = { invited: 'p-invited', yes: 'p-yes', no: 'p-no' };
+
+  function renderFamilies() {
+    var q = $('guestSearch').value.trim(), filt = $('guestFilter').value, html = '';
+    var list = state.families.filter(function (f) {
+      return (filt === 'all' || f.status === filt) && (!q || (f.name + ' ' + (f.phone || '') + ' ' + (f.notes || '')).indexOf(q) !== -1);
+    });
+    list.forEach(function (f) {
+      var t = f.tableId ? findById(state.tables, f.tableId) : null;
+      html += '<div class="item"><div class="main"><div class="t">' + esc(f.name) + '</div>' +
+        '<div class="s">' + int(f.adults) + ' מבוגרים · ' + int(f.kids) + ' ילדים' +
+        (f.phone ? ' · <a style="color:inherit" href="tel:' + esc(f.phone) + '">' + esc(f.phone) + '</a>' : '') +
+        (t ? ' · 🪑 ' + esc(t.name) : '') + (f.notes ? '<br>' + esc(f.notes) : '') + '</div></div>' +
+        '<button type="button" class="pill ' + statusClass[f.status] + '" data-act="cycle" data-id="' + f.id + '" style="border:0;cursor:pointer">' + statusLabel[f.status] + '</button>' +
+        '<button type="button" class="btn sec sm" data-act="edit" data-id="' + f.id + '">✏️</button>' +
+        '<button type="button" class="btn sec sm" data-act="del" data-id="' + f.id + '">🗑️</button></div>';
+    });
+    $('familyList').innerHTML = html || '<div class="empty">' + (state.families.length ? 'אין תוצאות' : 'עדיין לא נוספו משפחות') + '</div>';
+  }
+  $('guestSearch').addEventListener('input', renderFamilies);
+  $('guestFilter').addEventListener('change', renderFamilies);
+  $('familyList').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-act]') : null; if (!b) return;
+    var id = b.getAttribute('data-id'), act = b.getAttribute('data-act'), f = findById(state.families, id);
+    if (!f) return;
+    if (act === 'edit') editFamily(id);
+    if (act === 'cycle') { f.status = f.status === 'invited' ? 'yes' : f.status === 'yes' ? 'no' : 'invited'; persist(); }
+    if (act === 'del' && confirm('למחוק את ' + f.name + '?')) { removeById(state.families, id); persist(); }
+  });
+
+  // ---------- הושבה ----------
+  function submitTable(e) {
+    if (e) e.preventDefault();
+    var name = $('tName').value.trim();
+    if (!name) { toast('יש להזין שם שולחן'); return; }
+    state.tables.push({ id: uid(), name: name, cap: int($('tCap').value) || 10 });
+    $('tName').value = 'שולחן ' + (state.tables.length + 1);
+    persist(); toast('השולחן נוסף');
+  }
+  $('tableForm').addEventListener('submit', submitTable);
+
+  function seatedCount(tableId) {
+    return state.families.reduce(function (s, f) { return s + (f.tableId === tableId && f.status !== 'no' ? peopleOf(f) : 0); }, 0);
+  }
+  function tableOptions(sel) {
+    var o = '<option value="">— בחר שולחן —</option>';
+    state.tables.forEach(function (t) {
+      o += '<option value="' + t.id + '"' + (t.id === sel ? ' selected' : '') + '>' + esc(t.name) + ' (' + seatedCount(t.id) + '/' + t.cap + ')</option>';
+    });
+    return o;
+  }
+  function renderSeating() {
+    if (!$('tName').value) $('tName').value = 'שולחן ' + (state.tables.length + 1);
+    var html = '';
+    state.tables.forEach(function (t) {
+      var n = seatedCount(t.id), pct = t.cap ? Math.min(100, n / t.cap * 100) : 0;
+      var fams = state.families.filter(function (f) { return f.tableId === t.id && f.status !== 'no'; });
+      html += '<div class="card"><div class="item" style="border:0;padding:0"><div class="main"><div class="t">🪑 ' + esc(t.name) + '</div>' +
+        '<div class="s">' + n + ' מתוך ' + t.cap + ' מקומות' + (n > t.cap ? ' · <b style="color:#fca5a5">חריגה!</b>' : '') + '</div></div>' +
+        '<button type="button" class="btn sec sm" data-act="deltable" data-id="' + t.id + '">🗑️</button></div>' +
+        '<div class="bar"><div class="' + (n > t.cap ? 'over' : '') + '" style="width:' + pct + '%"></div></div><div class="list" style="margin-top:6px">';
+      fams.forEach(function (f) {
+        html += '<div class="item"><div class="main"><div class="t">' + esc(f.name) + '</div><div class="s">' + peopleOf(f) + ' נפשות</div></div>' +
+          '<button type="button" class="btn sec sm" data-act="unseat" data-id="' + f.id + '">הסר</button></div>';
+      });
+      html += '</div></div>';
+    });
+    $('tableList').innerHTML = html || '<div class="card empty">עדיין לא נוספו שולחנות</div>';
+
+    var un = state.families.filter(function (f) { return !f.tableId && f.status !== 'no'; }), uh = '';
+    un.forEach(function (f) {
+      uh += '<div class="item"><div class="main"><div class="t">' + esc(f.name) + '</div><div class="s">' + peopleOf(f) + ' נפשות · ' + statusLabel[f.status] + '</div></div>' +
+        (state.tables.length ? '<select data-act="seat" data-id="' + f.id + '" style="flex:0 0 150px">' + tableOptions('') + '</select>' : '') + '</div>';
+    });
+    $('unseatedList').innerHTML = uh || '<div class="empty">' + (state.families.length ? 'כולם הושבו 🎉' : 'אין משפחות') + '</div>';
+  }
+  $('tableList').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-act]') : null; if (!b) return;
+    var id = b.getAttribute('data-id'), act = b.getAttribute('data-act');
+    if (act === 'unseat') { var f = findById(state.families, id); if (f) { f.tableId = ''; persist(); } }
+    if (act === 'deltable') {
+      var t = findById(state.tables, id);
+      if (t && confirm('למחוק את ' + t.name + '? המשפחות שבו יחזרו לרשימת הממתינים.')) {
+        state.families.forEach(function (f) { if (f.tableId === id) f.tableId = ''; });
+        removeById(state.tables, id); persist();
+      }
+    }
+  });
+  $('unseatedList').addEventListener('change', function (e) {
+    var s = e.target; if (s.getAttribute('data-act') !== 'seat' || !s.value) return;
+    var f = findById(state.families, s.getAttribute('data-id')); if (!f) return;
+    f.tableId = s.value; persist(); toast(f.name + ' הושבו');
+  });
+
+  // ---------- תקציב ----------
+  function submitExpense(e) {
+    if (e) e.preventDefault();
+    var name = $('eName').value.trim(), amt = num($('eAmount').value);
+    if (!name || !amt) { toast('יש להזין פריט וסכום'); return; }
+    state.expenses.push({ id: uid(), name: name, amount: amt, cat: $('eCat').value, paid: $('ePaid').value === '1' });
+    $('eName').value = ''; $('eAmount').value = ''; $('ePaid').value = '0';
+    persist(); toast('ההוצאה נוספה');
+  }
+  $('expenseForm').addEventListener('submit', submitExpense);
+  $('bTotal').addEventListener('change', function () { state.budget = num(this.value); persist(); });
+
+  function renderBudget() {
+    if (document.activeElement !== $('bTotal')) $('bTotal').value = state.budget || '';
+    var total = 0, paid = 0, html = '';
+    state.expenses.forEach(function (x) {
+      total += num(x.amount); if (x.paid) paid += num(x.amount);
+      html += '<div class="item"><div class="main"><div class="t">' + esc(x.name) + ' · ₪' + fmt(x.amount) + '</div><div class="s">' + esc(x.cat) + '</div></div>' +
+        '<button type="button" class="pill ' + (x.paid ? 'p-yes' : 'p-invited') + '" data-act="paid" data-id="' + x.id + '" style="border:0;cursor:pointer">' + (x.paid ? 'שולם' : 'לא שולם') + '</button>' +
+        '<button type="button" class="btn sec sm" data-act="delexp" data-id="' + x.id + '">🗑️</button></div>';
+    });
+    $('expenseList').innerHTML = html || '<div class="empty">עדיין לא נוספו הוצאות</div>';
+    var people = comingPeople(), b = num(state.budget);
+    var pct = b ? Math.min(100, total / b * 100) : 0;
+    $('budgetBar').style.width = pct + '%';
+    $('budgetBar').className = b && total > b ? 'over' : '';
+    $('budgetSummary').innerHTML = 'הוצאות: ₪' + fmt(total) + ' · שולם: ₪' + fmt(paid) + ' · נותר לתשלום: ₪' + fmt(total - paid) +
+      (b ? '<br>' + (total > b ? '<b style="color:#fca5a5">חריגה של ₪' + fmt(total - b) + '</b>' : 'נותר בתקציב: ₪' + fmt(b - total)) : '') +
+      (people ? '<br>עלות לסועד: ₪' + fmt(total / people) + ' (' + people + ' מגיעים)' : '');
+  }
+  $('expenseList').addEventListener('click', function (e) {
+    var b = e.target.closest ? e.target.closest('[data-act]') : null; if (!b) return;
+    var x = findById(state.expenses, b.getAttribute('data-id')); if (!x) return;
+    if (b.getAttribute('data-act') === 'paid') { x.paid = !x.paid; persist(); }
+    if (b.getAttribute('data-act') === 'delexp' && confirm('למחוק את ' + x.name + '?')) { removeById(state.expenses, x.id); persist(); }
+  });
+
+  function comingPeople() {
+    return state.families.reduce(function (s, f) { return s + (f.status === 'yes' ? peopleOf(f) : 0); }, 0);
+  }
+
+  // ---------- גיבוי ----------
+  function backupText() { return JSON.stringify(state); }
+  function restoreFrom(text) {
+    try {
+      var obj = JSON.parse(text);
+      if (!obj || !obj.families) throw new Error('bad');
+      if (!confirm('לשחזר את הגיבוי? הנתונים הנוכחיים יוחלפו.')) return;
+      state = obj;
+      if (!state.tables) state.tables = [];
+      if (!state.expenses) state.expenses = [];
+      persist(); toast('הגיבוי שוחזר');
+    } catch (e) { toast('קובץ הגיבוי לא תקין'); }
+  }
+  $('exportBtn').addEventListener('click', function () {
+    var blob = new Blob([backupText()], { type: 'application/json' });
+    var a = document.createElement('a');
+    var d = new Date();
+    a.href = URL.createObjectURL(blob);
+    a.download = 'simchat-torah-backup-' + d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate() + '.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
+  $('importBtn').addEventListener('click', function () { $('importFile').click(); });
+  $('importFile').addEventListener('change', function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () { restoreFrom(r.result); };
+    r.readAsText(f); this.value = '';
+  });
+  $('copyBtn').addEventListener('click', function () {
+    var txt = backupText();
+    function fallback() { $('pasteBox').value = txt; $('pasteBox').select(); try { document.execCommand('copy'); } catch (e) {} toast('הטקסט הועתק / מסומן להעתקה'); }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(function () { toast('הגיבוי הועתק'); }, fallback);
+    else fallback();
+  });
+  $('pasteBtn').addEventListener('click', function () { var t = $('pasteBox').value.trim(); if (t) restoreFrom(t); });
+  $('resetBtn').addEventListener('click', function () {
+    if (confirm('למחוק את כל הנתונים? לא ניתן לבטל.')) { state = emptyState(); persist(); toast('הנתונים נמחקו'); }
+  });
+
+  // ---------- תצוגה ----------
+  function render() {
+    $('stFamilies').textContent = state.families.length;
+    $('stPeople').textContent = comingPeople();
+    $('stSeated').textContent = state.families.reduce(function (s, f) { return s + (f.tableId && f.status !== 'no' ? peopleOf(f) : 0); }, 0);
+    $('stSpent').textContent = fmt(state.expenses.reduce(function (s, x) { return s + num(x.amount); }, 0));
+    renderFamilies(); renderSeating(); renderBudget();
+  }
+
+  function storageReport() {
+    var mode = local ? 'זיכרון קבוע של הדפדפן (localStorage)' : session ? 'זיכרון זמני בלבד (sessionStorage) — יימחק בסגירת הלשונית' : 'זיכרון בלבד — יימחק ברענון';
+    $('storageInfo').innerHTML = 'אופן שמירה: <b>' + mode + '</b><br>פתיחה: ' + (isFile ? 'קובץ מקומי (file://)' : esc(location.host)) +
+      (state.savedAt ? '<br>נשמר לאחרונה: ' + new Date(state.savedAt).toLocaleString('he-IL') : '');
+    if (!local) {
+      showBanner('⚠️ הדפדפן לא מאפשר שמירה קבועה ' + (isFile ? 'כשפותחים את האפליקציה כקובץ מקומי' : 'באתר הזה') +
+        '. הנתונים עלולים להימחק כשסוגרים את הלשונית.<br>פתרון: פתחו את האפליקציה מהכתובת <b>malkielnili.github.io/simchat-torah</b>, או שמרו קובץ גיבוי בלשונית "גיבוי".');
+    } else if (isFile) {
+      showBanner('ℹ️ האפליקציה פתוחה כקובץ מקומי. בחלק מהטאבלטים (בעיקר אנדרואיד) הדפדפן מוחק את הנתונים של קבצים מקומיים בין פתיחות. ' +
+        'לשמירה בטוחה פתחו מהכתובת <b>malkielnili.github.io/simchat-torah</b>, ושמרו קובץ גיבוי בלשונית "גיבוי".');
+    }
+  }
+
+  // שמירה נוספת כשהלשונית נסגרת או עוברת לרקע (באנדרואיד הדפדפן עלול לסגור לשונית ברקע)
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') saveRaw(state); });
+  window.addEventListener('pagehide', function () { saveRaw(state); });
+
+  // אם הנתונים שוחזרו מגיבוי משני (sessionStorage או window.name), כותבים אותם בחזרה גם ל-localStorage
+  if (state.savedAt) saveRaw(state);
+  storageReport();
+  render();
+})();
+</script>
+</body>
+</html>
