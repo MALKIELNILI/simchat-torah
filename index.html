@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#4338ca">
 <title>סעודת שמחת תורה</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
   :root{
     --bg:#0f172a; --card:#1e293b; --card2:#26364d; --line:rgba(255,255,255,0.08);
@@ -19,6 +24,9 @@
   header{text-align:center;margin-bottom:16px;}
   header .eyebrow{color:var(--gold);font-size:13px;font-weight:700;letter-spacing:1px;}
   header h1{margin:4px 0 0;font-size:24px;font-weight:800;}
+  .sync{display:inline-block;margin-top:8px;font-size:12px;padding:3px 10px;border-radius:99px;background:#334155;color:#cbd5e1;}
+  .sync.on{background:#064e3b;color:#6ee7b7;}
+  .sync.off{background:#78350f;color:#fde68a;}
   .banner{display:none;background:#78350f;border:1px solid #d97706;color:#fef3c7;border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px;line-height:1.5;}
   .banner.show{display:block;}
   .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;}
@@ -71,6 +79,7 @@
   <header>
     <div class="eyebrow">📜 שמחת תורה</div>
     <h1>ניהול הסעודה</h1>
+    <div class="sync" id="syncStatus">⏳ מתחבר לסנכרון...</div>
   </header>
 
   <div id="storageBanner" class="banner"></div>
@@ -243,8 +252,8 @@
     return best;
   }
 
-  function saveRaw(obj) {
-    obj.savedAt = Date.now();
+  function saveRaw(obj, keepTs) {
+    if (!keepTs) obj.savedAt = Date.now();
     var raw = JSON.stringify(obj);
     var okLocal = false;
     memory = raw;
@@ -257,10 +266,15 @@
 
   // ---------- נתונים ----------
   function emptyState() { return { families: [], tables: [], expenses: [], budget: 0, savedAt: 0 }; }
-  var state = loadRaw() || emptyState();
-  if (!state.families) state.families = [];
-  if (!state.tables) state.tables = [];
-  if (!state.expenses) state.expenses = [];
+  // Firebase מוחק מערכים ריקים, ולכן משלימים אותם בכל טעינה
+  function normalize(s) {
+    s = s || emptyState();
+    if (!s.families) s.families = [];
+    if (!s.tables) s.tables = [];
+    if (!s.expenses) s.expenses = [];
+    return s;
+  }
+  var state = normalize(loadRaw());
 
   function uid() {
     // לא משתמשים ב-crypto.randomUUID: הוא לא קיים בהקשר לא מאובטח (file://) ומפיל את הקוד
@@ -277,7 +291,55 @@
   function $(id) { return document.getElementById(id); }
   function peopleOf(f) { return int(f.adults) + int(f.kids); }
 
-  function persist() { saveRaw(state); render(); }
+  function persist() { saveRaw(state); pushRemote(); render(); }
+
+  // ---------- סנכרון ענן (Firebase של סריקוב, נתיב נפרד) ----------
+  // מחשב, טלפון וטאבלט רואים את אותם נתונים. הגרסה עם savedAt העדכני יותר גוברת.
+  var FB_PATH = 'simchat-torah/state';
+  var fbRef = null, fbConnected = false;
+  function setSync(mode) {
+    var el = $('syncStatus');
+    if (mode === 'on') { el.textContent = '☁️ מסונכרן בין המכשירים'; el.className = 'sync on'; }
+    else if (mode === 'off') { el.textContent = '📴 לא מחובר — נשמר במכשיר, יסונכרן בחיבור הבא'; el.className = 'sync off'; }
+    else { el.textContent = '⏳ מתחבר לסנכרון...'; el.className = 'sync'; }
+  }
+  function pushRemote() {
+    if (!fbRef) return;
+    try { fbRef.set(JSON.parse(JSON.stringify(state))); } catch (e) {}
+  }
+  function initSync() {
+    try {
+      if (!window.firebase || !firebase.database) { setSync('off'); return; }
+      firebase.initializeApp({
+        apiKey: 'AIzaSyCtTCUNeYzRMlSLe2VJs_ols818QI1ZuTA',
+        authDomain: 'sarikow-3342b.firebaseapp.com',
+        databaseURL: 'https://sarikow-3342b-default-rtdb.europe-west1.firebasedatabase.app',
+        projectId: 'sarikow-3342b',
+        storageBucket: 'sarikow-3342b.firebasestorage.app',
+        messagingSenderId: '95850039076',
+        appId: '1:95850039076:web:4149b5724c52fbdaa315b1'
+      });
+      var db = firebase.database();
+      fbRef = db.ref(FB_PATH);
+      db.ref('.info/connected').on('value', function (s) {
+        fbConnected = !!s.val();
+        setSync(fbConnected ? 'on' : 'off');
+        storageReport();
+      });
+      fbRef.on('value', function (snap) {
+        var remote = snap.val();
+        var rTs = remote && remote.savedAt ? remote.savedAt : 0, lTs = state.savedAt || 0;
+        if (rTs > lTs) {
+          state = normalize(remote);
+          saveRaw(state, true);
+          render(); storageReport();
+        } else if (lTs > rTs) {
+          pushRemote();
+        }
+      });
+      setTimeout(function () { if (!fbConnected) setSync('off'); }, 6000);
+    } catch (e) { fbRef = null; setSync('off'); }
+  }
 
   var toastTimer;
   function toast(msg) {
@@ -491,9 +553,7 @@
       var obj = JSON.parse(text);
       if (!obj || !obj.families) throw new Error('bad');
       if (!confirm('לשחזר את הגיבוי? הנתונים הנוכחיים יוחלפו.')) return;
-      state = obj;
-      if (!state.tables) state.tables = [];
-      if (!state.expenses) state.expenses = [];
+      state = normalize(obj);
       persist(); toast('הגיבוי שוחזר');
     } catch (e) { toast('קובץ הגיבוי לא תקין'); }
   }
@@ -535,9 +595,13 @@
 
   function storageReport() {
     var mode = local ? 'זיכרון קבוע של הדפדפן (localStorage)' : session ? 'זיכרון זמני בלבד (sessionStorage) — יימחק בסגירת הלשונית' : 'זיכרון בלבד — יימחק ברענון';
-    $('storageInfo').innerHTML = 'אופן שמירה: <b>' + mode + '</b><br>פתיחה: ' + (isFile ? 'קובץ מקומי (file://)' : esc(location.host)) +
+    $('storageInfo').innerHTML = 'אופן שמירה: <b>' + mode + '</b><br>סנכרון ענן: <b>' + (fbConnected ? 'מחובר' : 'לא מחובר') + '</b>' +
+      '<br>פתיחה: ' + (isFile ? 'קובץ מקומי (file://)' : esc(location.host)) +
       (state.savedAt ? '<br>נשמר לאחרונה: ' + new Date(state.savedAt).toLocaleString('he-IL') : '');
-    if (!local) {
+    if (fbConnected) {
+      // כשיש סנכרון, הנתונים נטענים מהענן גם אם הדפדפן מחק את האחסון המקומי
+      $('storageBanner').className = 'banner';
+    } else if (!local) {
       showBanner('⚠️ הדפדפן לא מאפשר שמירה קבועה ' + (isFile ? 'כשפותחים את האפליקציה כקובץ מקומי' : 'באתר הזה') +
         '. הנתונים עלולים להימחק כשסוגרים את הלשונית.<br>פתרון: פתחו את האפליקציה מהכתובת <b>malkielnili.github.io/simchat-torah</b>, או שמרו קובץ גיבוי בלשונית "גיבוי".');
     } else if (isFile) {
@@ -551,9 +615,14 @@
   window.addEventListener('pagehide', function () { saveRaw(state); });
 
   // אם הנתונים שוחזרו מגיבוי משני (sessionStorage או window.name), כותבים אותם בחזרה גם ל-localStorage
-  if (state.savedAt) saveRaw(state);
+  if (state.savedAt) saveRaw(state, true);
   storageReport();
   render();
+  initSync();
+
+  if ('serviceWorker' in navigator && !isFile) {
+    try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
+  }
 })();
 </script>
 </body>
