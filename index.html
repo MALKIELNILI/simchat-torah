@@ -96,6 +96,29 @@
   .toast.show{opacity:1;}
   .footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px;}
   @media (max-width:560px){ .stats{grid-template-columns:repeat(3,1fr);} nav button{font-size:13px;} }
+  #printArea{display:none;}
+  @media print{
+    @page{size:A4;margin:12mm;}
+    body{background:#fff !important;color:#000;padding:0;}
+    .wrap,.toast{display:none !important;}
+    #printArea{display:block;font-size:12pt;}
+    #printArea h1{font-size:20pt;text-align:center;margin:0 0 2mm;}
+    #printArea .sub{text-align:center;color:#444;font-size:10pt;margin-bottom:5mm;}
+    #printArea h2{font-size:15pt;margin:0 0 3mm;border-bottom:2px solid #000;padding-bottom:1mm;}
+    #printArea .sec{page-break-after:always;}
+    #printArea .sec:last-child{page-break-after:auto;}
+    #printArea .grid{display:grid;grid-template-columns:1fr 1fr;gap:4mm;}
+    #printArea .tb{border:1.5px solid #000;border-radius:3mm;padding:2.5mm 3.5mm;break-inside:avoid;}
+    #printArea .tb h3{margin:0 0 1.5mm;font-size:13pt;display:flex;justify-content:space-between;}
+    #printArea .tb h3 small{font-weight:normal;font-size:10pt;}
+    #printArea .tb div{display:flex;justify-content:space-between;border-top:1px dotted #999;padding:.8mm 0;}
+    #printArea .tb .empty{color:#777;border:0;}
+    #printArea .un{margin-top:5mm;break-inside:avoid;}
+    #printArea table{width:100%;border-collapse:collapse;}
+    #printArea th,#printArea td{border:1px solid #000;padding:1.5mm 2mm;text-align:right;}
+    #printArea th{background:#eee;}
+    #printArea tr{break-inside:avoid;}
+  }
 </style>
 </head>
 <body>
@@ -202,6 +225,14 @@
       </div>
       <button type="submit" class="btn full">➕ הוסף</button>
     </form>
+    <div class="card">
+      <h2>🖨️ הדפסה</h2>
+      <div class="row">
+        <button type="button" class="btn" id="printTablesBtn">רשימת שולחנות</button>
+        <button type="button" class="btn sec" id="printNamesBtn">לפי שם — מי באיזה שולחן</button>
+      </div>
+      <div class="muted" style="margin-top:6px">מדפיס את שני הצדדים, גברים ונשים. בטלפון אפשר לבחור "שמור כ-PDF" ולשלוח בוואטסאפ.</div>
+    </div>
     <div id="tableList"></div>
     <div class="card">
       <h2 id="unseatedTitle">לא הושבו</h2>
@@ -262,6 +293,7 @@
   <div class="footer">סעודת שמחת תורה · מלכיאל</div>
 </div>
 <div class="toast" id="toast"></div>
+<div id="printArea"></div>
 
 <script>
 (function () {
@@ -812,6 +844,51 @@
       removeById(state.tables, id); persist();
     }
   });
+  // ---------- הדפסה ----------
+  function printHeader(title) {
+    return '<h1>סעודת שמחת תורה — ' + title + '</h1><div class="sub">הודפס ' + new Date().toLocaleString('he-IL') + '</div>';
+  }
+  function printTables() {
+    var html = '';
+    Object.keys(SECTIONS).forEach(function (sec) {
+      var key = SECTIONS[sec].table, label = SECTIONS[sec].label;
+      var tables = state.tables.filter(function (t) { return t.section === sec; });
+      var seats = tables.reduce(function (s, t) { return s + int(t.cap); }, 0);
+      var seated = tables.reduce(function (s, t) { return s + seatedCount(t.id, sec); }, 0);
+      html += '<div class="sec">' + printHeader('שולחנות ' + label) +
+        '<h2>' + label + ' · ' + tables.length + ' שולחנות · ' + seated + ' מתוך ' + seats + ' מקומות</h2><div class="grid">';
+      tables.forEach(function (t) {
+        var fams = state.families.filter(function (f) { return f[key] === t.id && f.status !== 'no'; }).sort(byName);
+        html += '<div class="tb"><h3><span>' + esc(t.name) + (t.group ? ' · ' + esc(t.group) : '') + '</span><small>' + seatedCount(t.id, sec) + '/' + t.cap + '</small></h3>';
+        fams.forEach(function (f) { html += '<div><span>' + esc(f.name) + '</span><span>' + countIn(f, sec) + '</span></div>'; });
+        if (!fams.length) html += '<div class="empty">— פנוי —</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      var un = state.families.filter(function (f) { return !f[key] && f.status === 'yes' && countIn(f, sec); }).sort(byName);
+      if (un.length) {
+        html += '<div class="un"><h2>טרם שובצו — ' + label + ' (' + un.reduce(function (s, f) { return s + countIn(f, sec); }, 0) + ')</h2>' +
+          un.map(function (f) { return esc(f.name) + ' (' + countIn(f, sec) + ')'; }).join(' · ') + '</div>';
+      }
+      html += '</div>';
+    });
+    doPrint(html);
+  }
+  function printNames() {
+    var rows = state.families.filter(function (f) { return f.status !== 'no' && peopleOf(f); }).sort(byName).map(function (f) {
+      return '<tr><td>' + esc(f.name) + '</td><td>' + (int(f.men) ? (f.menTable ? esc(tableName(f.menTable)) : '—') + ' (' + int(f.men) + ')' : '') + '</td>' +
+        '<td>' + (int(f.women) ? (f.womenTable ? esc(tableName(f.womenTable)) : '—') + ' (' + int(f.women) + ')' : '') + '</td></tr>';
+    }).join('');
+    doPrint('<div class="sec">' + printHeader('מי באיזה שולחן') +
+      '<table><thead><tr><th>שם</th><th>👨 שולחן גברים</th><th>👩 שולחן נשים</th></tr></thead><tbody>' + rows + '</tbody></table></div>');
+  }
+  function doPrint(html) {
+    $('printArea').innerHTML = html;
+    setTimeout(function () { window.print(); }, 50);
+  }
+  $('printTablesBtn').addEventListener('click', printTables);
+  $('printNamesBtn').addEventListener('click', printNames);
+
   $('unseatedList').addEventListener('change', function (e) {
     var s = e.target; if (s.getAttribute('data-act') !== 'seat' || !s.value) return;
     var f = findById(state.families, s.getAttribute('data-id')); if (!f) return;
