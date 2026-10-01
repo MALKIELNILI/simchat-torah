@@ -966,10 +966,15 @@
     });
     doPrint(html);
   }
+  // "שולחן 5 – 3 מושבים": שם השולחן כפי שמופיע, וכמה מושבים יש למשפחה בו
+  function seatLine(f, sec) {
+    var n = int(f[sec]), id = f[SECTIONS[sec].table];
+    return (id ? tableName(id) : 'טרם שובץ') + ' – ' + (n === 1 ? 'מושב אחד' : n + ' מושבים');
+  }
   function printNames() {
     var rows = state.families.filter(function (f) { return f.status !== 'no' && peopleOf(f); }).sort(byName).map(function (f) {
-      return '<tr><td>' + esc(f.name) + '</td><td>' + (int(f.men) ? (f.menTable ? esc(tableName(f.menTable)) : '—') + ' (' + int(f.men) + ')' : '') + '</td>' +
-        '<td>' + (int(f.women) ? (f.womenTable ? esc(tableName(f.womenTable)) : '—') + ' (' + int(f.women) + ')' : '') + '</td></tr>';
+      return '<tr><td>' + esc(f.name) + '</td><td>' + (int(f.men) ? esc(seatLine(f, 'men')) : '') + '</td>' +
+        '<td>' + (int(f.women) ? esc(seatLine(f, 'women')) : '') + '</td></tr>';
     }).join('');
     doPrint('<div class="sec">' + printHeader('מי באיזה שולחן') +
       '<table><thead><tr><th>שם</th><th>👨 שולחן גברים</th><th>👩 שולחן נשים</th></tr></thead><tbody>' + rows + '</tbody></table></div>');
@@ -1001,8 +1006,8 @@
     var lines = ['*סעודת שמחת תורה — מי באיזה שולחן*', ''];
     state.families.filter(function (f) { return f.status !== 'no' && peopleOf(f); }).sort(byName).forEach(function (f) {
       var parts = [];
-      if (int(f.men)) parts.push('👨 ' + (f.menTable ? tableName(f.menTable) : 'טרם שובץ'));
-      if (int(f.women)) parts.push('👩 ' + (f.womenTable ? tableName(f.womenTable) : 'טרם שובץ'));
+      if (int(f.men)) parts.push('👨 ' + seatLine(f, 'men'));
+      if (int(f.women)) parts.push('👩 ' + seatLine(f, 'women'));
       lines.push('• ' + f.name + ' — ' + parts.join(' | '));
     });
     return lines.join('\n');
