@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#4338ca">
+<title>סעודת שמחת תורה</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+  :root{
+    --bg:#0f172a; --card:#1e293b; --card2:#26364d; --line:rgba(255,255,255,0.08);
+    --accent:#4338ca; --accent2:#6366f1; --ok:#059669; --warn:#d97706; --bad:#dc2626; --wa:#16a34a;
+    --gold:#fde68a; --text:#f1f5f9; --muted:#94a3b8;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+    background:linear-gradient(160deg,#0f172a,#1e293b 60%,#0f172a);color:var(--text);min-height:100vh;
+    padding:20px 16px 60px;-webkit-tap-highlight-color:transparent;}
+  .wrap{max-width:760px;margin:0 auto;}
+  header{text-align:center;margin-bottom:16px;}
+  header .eyebrow{color:var(--gold);font-size:13px;font-weight:700;letter-spacing:1px;}
+  header h1{margin:4px 0 0;font-size:24px;font-weight:800;}
+  .sync{display:inline-block;margin-top:8px;font-size:12px;padding:3px 10px;border-radius:99px;background:#334155;color:#cbd5e1;}
+  .sync.on{background:#064e3b;color:#6ee7b7;}
+  .sync.off{background:#78350f;color:#fde68a;}
+  .banner{display:none;background:#78350f;border:1px solid #d97706;color:#fef3c7;border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:14px;line-height:1.5;}
+  .banner.show{display:block;}
+  .stats{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:14px;}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 4px;text-align:center;}
+  .stat .v{font-size:19px;font-weight:800;}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:2px;}
+  .seats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:-6px 0 14px;}
+  .seat{padding:10px 8px;}
+  .seat .h{font-size:13px;color:var(--muted);font-weight:700;}
+  .seat .v{font-size:24px;color:#6ee7b7;}
+  .seat.short .v{color:#fca5a5;}
+  nav{display:flex;gap:4px;margin-bottom:14px;background:var(--card);padding:5px;border-radius:12px;border:1px solid var(--line);}
+  nav button{flex:1;background:none;border:0;color:var(--muted);font:inherit;font-size:14px;font-weight:700;padding:10px 2px;border-radius:9px;cursor:pointer;}
+  nav button.active{background:var(--accent);color:#fff;}
+  section{display:none;}
+  section.active{display:block;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;}
+  .card h2{margin:0 0 10px;font-size:16px;}
+  .row{display:flex;gap:8px;flex-wrap:wrap;}
+  .row > *{flex:1 1 120px;min-width:0;}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px;}
+  input,select,textarea{width:100%;background:#0f172a;border:1px solid #334155;color:var(--text);border-radius:9px;padding:10px;font:inherit;font-size:16px;}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--accent2);border-color:transparent;}
+  .btn{display:inline-block;background:var(--accent);color:#fff;border:0;border-radius:10px;padding:11px 16px;font:inherit;font-weight:700;cursor:pointer;touch-action:manipulation;text-decoration:none;text-align:center;}
+  .btn:active{transform:scale(0.97);}
+  .btn.sec{background:#334155;}
+  .btn.danger{background:var(--bad);}
+  .btn.wa{background:var(--wa);}
+  .btn.sm{padding:6px 10px;font-size:13px;border-radius:8px;}
+  .btn.full{width:100%;margin-top:10px;}
+  .list .item{display:flex;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line);flex-wrap:wrap;}
+  .list .item:first-child{border-top:0;}
+  .item .main{flex:1 1 200px;min-width:0;}
+  .item .t{font-weight:700;}
+  .item .s{font-size:13px;color:var(--muted);margin-top:3px;}
+  .item .acts{display:flex;gap:6px;align-items:center;}
+  input.name-edit{background:transparent;border:1px solid transparent;font-weight:700;padding:4px 6px;margin:-4px -6px 0;}
+  input.name-edit:hover{border-color:#334155;}
+  .qty{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;}
+  .step{display:flex;align-items:center;gap:4px;font-size:13px;color:var(--muted);}
+  .step button{width:30px;height:30px;border-radius:8px;border:0;background:#334155;color:#fff;font-size:17px;font-weight:700;cursor:pointer;touch-action:manipulation;}
+  .step input{width:46px;padding:4px;text-align:center;font-size:15px;}
+  .pill{font-size:12px;padding:4px 9px;border-radius:99px;font-weight:700;white-space:nowrap;border:0;cursor:pointer;font-family:inherit;}
+  .p-invited{background:#334155;color:#cbd5e1;}
+  .p-yes{background:#064e3b;color:#6ee7b7;}
+  .p-no{background:#7f1d1d;color:#fecaca;}
+  .empty{color:var(--muted);text-align:center;padding:14px 0;font-size:14px;}
+  .bar{height:8px;background:#0f172a;border-radius:99px;overflow:hidden;margin-top:6px;}
+  .bar > div{height:100%;background:var(--ok);}
+  .bar > div.over{background:var(--bad);}
+  .filter{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
+  .filter input{flex:1 1 160px;}
+  .filter select{flex:0 0 130px;}
+  select.move-all{margin-top:8px;font-size:14px;padding:8px;color:var(--muted);}
+  .seg{display:flex;gap:6px;margin-bottom:12px;}
+  .seg button{flex:1;padding:10px;border-radius:10px;border:1px solid #334155;background:var(--card);color:var(--muted);font:inherit;font-weight:700;cursor:pointer;}
+  .seg button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .muted{color:var(--muted);font-size:13px;line-height:1.5;}
+  .sent{color:#6ee7b7;font-size:12px;}
+  .list .item.seat-full{background:rgba(5,150,105,0.14);border-right:4px solid #10b981;border-radius:10px;padding-right:10px;padding-left:6px;margin-top:4px;}
+  .list .item.seat-part{background:rgba(217,119,6,0.14);border-right:4px solid #f59e0b;border-radius:10px;padding-right:10px;padding-left:6px;margin-top:4px;}
+  .seat-full input.name-edit{color:#6ee7b7;}
+  .seat-part input.name-edit{color:#fcd34d;}
+  .seat-tag{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px;margin-bottom:4px;}
+  .seat-full .seat-tag{background:#064e3b;color:#6ee7b7;}
+  .seat-part .seat-tag{background:#78350f;color:#fde68a;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111827;border:1px solid var(--accent2);color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:10;}
+  .toast.show{opacity:1;}
+  .footer{text-align:center;color:var(--muted);font-size:12px;margin-top:24px;}
+  @media (max-width:560px){ .stats{grid-template-columns:repeat(3,1fr);} nav button{font-size:13px;} }
+  #printArea{display:none;}
+  @media print{
+    @page{size:A4;margin:12mm;}
+    body{background:#fff !important;color:#000;padding:0;}
+    .wrap,.toast{display:none !important;}
+    #printArea{display:block;font-size:12pt;}
+    #printArea h1{font-size:20pt;text-align:center;margin:0 0 2mm;}
+    #printArea .sub{text-align:center;color:#444;font-size:10pt;margin-bottom:5mm;}
+    #printArea h2{font-size:15pt;margin:0 0 3mm;border-bottom:2px solid #000;padding-bottom:1mm;}
+    #printArea .sec{page-break-after:always;}
+    #printArea .sec:last-child{page-break-after:auto;}
+    #printArea .grid{display:grid;grid-template-columns:1fr 1fr;gap:4mm;}
+    #printArea .tb{border:1.5px solid #000;border-radius:3mm;padding:2.5mm 3.5mm;break-inside:avoid;}
+    #printArea .tb h3{margin:0 0 1.5mm;font-size:13pt;display:flex;justify-content:space-between;}
+    #printArea .tb h3 small{font-weight:normal;font-size:10pt;}
+    #printArea .tb div{display:flex;justify-content:space-between;border-top:1px dotted #999;padding:.8mm 0;}
+    #printArea .tb .empty{color:#777;border:0;}
+    #printArea .un{margin-top:5mm;break-inside:avoid;}
+    #printArea table{width:100%;border-collapse:collapse;}
+    #printArea th,#printArea td{border:1px solid #000;padding:1.5mm 2mm;text-align:right;}
+    #printArea th{background:#eee;}
+    #printArea tr{break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">📜 שמחת תורה</div>
+    <h1>ניהול הסעודה</h1>
+    <div class="sync" id="syncStatus">⏳ מתחבר לסנכרון...</div>
+  </header>
+
+  <div id="storageBanner" class="banner"></div>
+
+  <div class="stats">
+    <div class="stat"><div class="v" id="stFamilies">0</div><div class="l">משפחות</div></div>
+    <div class="stat"><div class="v" id="stPeople">0</div><div class="l">מגיעים</div></div>
+    <div class="stat"><div class="v" id="stMen">0</div><div class="l">גברים</div></div>
+    <div class="stat"><div class="v" id="stWomen">0</div><div class="l">נשים</div></div>
+    <div class="stat"><div class="v" id="stSeated">0</div><div class="l">הושבו</div></div>
+    <div class="stat"><div class="v" id="stSpent">0</div><div class="l">הוצאות ₪</div></div>
+  </div>
+
+  <div class="seats">
+    <div class="stat seat" id="seatMen"></div>
+    <div class="stat seat" id="seatWomen"></div>
+  </div>
+
+  <nav id="tabs">
+    <button type="button" data-tab="guests" class="active">אורחים</button>
+    <button type="button" data-tab="invites">הזמנות</button>
+    <button type="button" data-tab="seating">הושבה</button>
+    <button type="button" data-tab="budget">תקציב</button>
+    <button type="button" data-tab="backup">גיבוי</button>
+  </nav>
+
+  <datalist id="familyNames"></datalist>
+
+  <!-- אורחים -->
+  <section id="tab-guests" class="active">
+    <form class="card" id="familyForm" autocomplete="off" novalidate>
+      <h2 id="familyFormTitle">הוספת משפחה</h2>
+      <div class="row">
+        <div><label for="fName">שם *</label><input id="fName" type="text" list="familyNames" placeholder="התחל להקליד — שמות קיימים ייפתחו"></div>
+        <div><label for="fGroup">משפחה (לשיבוץ)</label><input id="fGroup" type="text" placeholder="נקבע אוטומטית משם המשפחה"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label for="fMen">גברים</label><input id="fMen" type="number" inputmode="numeric" min="0" value="1"></div>
+        <div><label for="fWomen">נשים</label><input id="fWomen" type="number" inputmode="numeric" min="0" value="1"></div>
+        <div><label for="fStatus">סטטוס</label>
+          <select id="fStatus"><option value="yes">נרשמו</option><option value="invited">הוזמנו</option><option value="no">לא מגיעים</option></select></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label for="fPhone">טלפון (לוואטסאפ)</label><input id="fPhone" type="tel" inputmode="tel" placeholder="05X-XXXXXXX"></div>
+        <div><label for="fNotes">הערות</label><input id="fNotes" type="text"></div>
+      </div>
+      <input type="hidden" id="fId">
+      <button type="submit" class="btn full" id="familySubmit">➕ הוסף משפחה</button>
+      <button type="button" class="btn sec full" id="familyCancel" style="display:none">ביטול עריכה</button>
+    </form>
+
+    <div class="card">
+      <div class="filter">
+        <input id="guestSearch" type="search" list="familyNames" placeholder="🔍 חיפוש שם...">
+        <select id="guestFilter"><option value="all">הכל</option><option value="yes">נרשמו</option><option value="invited">הוזמנו</option><option value="no">לא מגיעים</option></select>
+      </div>
+      <div class="muted" style="margin-bottom:6px">אפשר לערוך שם וכמויות ישירות ברשימה. לחיצה על הסטטוס מחליפה אותו.</div>
+      <div class="list" id="familyList"></div>
+    </div>
+  </section>
+
+  <!-- הזמנות -->
+  <section id="tab-invites">
+    <div class="card">
+      <h2>נוסח ההזמנה</h2>
+      <textarea id="inviteText" rows="5"></textarea>
+      <div class="muted" style="margin-top:6px">המילה <b>{שם}</b> תוחלף בשם של כל משפחה.</div>
+    </div>
+    <div class="card">
+      <div class="filter">
+        <input id="inviteSearch" type="search" list="familyNames" placeholder="🔍 חיפוש שם...">
+        <select id="inviteFilter"><option value="unsent">לא נשלחו</option><option value="all">כולם</option><option value="sent">נשלחו</option></select>
+      </div>
+      <div class="muted" style="margin-bottom:6px">לחיצה על "שלח" פותחת וואטסאפ עם ההודעה מוכנה. בלי מספר טלפון, וואטסאפ יבקש לבחור איש קשר.</div>
+      <div class="list" id="inviteList"></div>
+    </div>
+  </section>
+
+  <!-- הושבה -->
+  <section id="tab-seating">
+    <div class="seg" id="sectionSeg">
+      <button type="button" data-sec="men" class="active">👨 גברים</button>
+      <button type="button" data-sec="women">👩 נשים</button>
+    </div>
+    <div class="card" id="hallSummary"></div>
+    <div class="card muted">
+      🪄 <b>שיבוץ אוטומטי:</b> כשנרשמות 2 משפחות או יותר עם אותו שם משפחה, הן מקבלות יחד שולחן פנוי באולם.
+      מי שאין לו עדיין קרוב רשום נשאר ברשימת "לא הושבו", ואתה משבץ אותו ידנית.
+    </div>
+    <form class="card" id="tableForm" autocomplete="off" novalidate>
+      <h2 id="tableFormTitle">הוספת שולחנות — גברים</h2>
+      <div class="row">
+        <div><label for="tCount">כמה שולחנות</label><input id="tCount" type="number" inputmode="numeric" min="1" value="1"></div>
+        <div><label for="tCap">מקומות בכל שולחן</label><input id="tCap" type="number" inputmode="numeric" min="1" value="12"></div>
+        <div><label for="tName">שם (לא חובה)</label><input id="tName" type="text" placeholder="ממוספר אוטומטית"></div>
+      </div>
+      <button type="submit" class="btn full">➕ הוסף</button>
+    </form>
+    <div class="card">
+      <h2>🖨️ הדפסה</h2>
+      <div class="row">
+        <button type="button" class="btn" id="printTablesBtn">רשימת שולחנות</button>
+        <button type="button" class="btn sec" id="printNamesBtn">לפי שם — מי באיזה שולחן</button>
+      </div>
+      <div class="muted" style="margin-top:6px">מדפיס את שני הצדדים, גברים ונשים. בטלפון אפשר לבחור "שמור כ-PDF" ולשלוח בוואטסאפ.</div>
+    </div>
+    <div class="card">
+      <h2>📲 שליחה בוואטסאפ</h2>
+      <div class="row">
+        <button type="button" class="btn wa" data-wa="men">שולחנות גברים</button>
+        <button type="button" class="btn wa" data-wa="women">שולחנות נשים</button>
+        <button type="button" class="btn wa" data-wa="names">לפי שם</button>
+      </div>
+      <div class="muted" style="margin-top:6px">נפתח וואטסאפ עם הרשימה כטקסט, ובוחרים למי לשלוח.</div>
+    </div>
+    <div id="tableList"></div>
+    <div class="card">
+      <h2 id="unseatedTitle">לא הושבו</h2>
+      <div class="list" id="unseatedList"></div>
+    </div>
+  </section>
+
+  <!-- תקציב -->
+  <section id="tab-budget">
+    <div class="card">
+      <h2>תקציב כולל</h2>
+      <div class="row">
+        <div><label for="bTotal">תקציב (₪)</label><input id="bTotal" type="number" inputmode="decimal" min="0"></div>
+      </div>
+      <div class="bar"><div id="budgetBar" style="width:0"></div></div>
+      <div class="muted" id="budgetSummary" style="margin-top:6px"></div>
+    </div>
+    <form class="card" id="expenseForm" autocomplete="off" novalidate>
+      <h2>הוספת הוצאה</h2>
+      <div class="row">
+        <div><label for="eName">פריט *</label><input id="eName" type="text" placeholder="בשר, יין, השכרת כלים..."></div>
+        <div><label for="eAmount">סכום (₪) *</label><input id="eAmount" type="number" inputmode="decimal" min="0" step="any"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label for="eCat">קטגוריה</label>
+          <select id="eCat"><option>אוכל</option><option>שתייה</option><option>כלים וציוד</option><option>אולם וקישוט</option><option>אחר</option></select></div>
+        <div><label for="ePaid">שולם?</label><select id="ePaid"><option value="0">עדיין לא</option><option value="1">שולם</option></select></div>
+      </div>
+      <button type="submit" class="btn full">➕ הוסף הוצאה</button>
+    </form>
+    <div class="card">
+      <div class="list" id="expenseList"></div>
+    </div>
+  </section>
+
+  <!-- גיבוי -->
+  <section id="tab-backup">
+    <div class="card">
+      <h2>מצב שמירה</h2>
+      <div id="storageInfo" class="muted"></div>
+    </div>
+    <div class="card">
+      <h2>גיבוי ושחזור</h2>
+      <p class="muted">הנתונים מסונכרנים בענן. בנוסף אפשר לשמור קובץ גיבוי ולשחזר ממנו בכל מכשיר.</p>
+      <button type="button" class="btn full" id="exportBtn">⬇️ שמור קובץ גיבוי</button>
+      <button type="button" class="btn sec full" id="importBtn">⬆️ שחזר מקובץ גיבוי</button>
+      <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+      <button type="button" class="btn sec full" id="copyBtn">📋 העתק גיבוי כטקסט</button>
+      <textarea id="pasteBox" rows="3" placeholder="או הדבק כאן טקסט גיבוי ולחץ 'שחזר מטקסט'" style="margin-top:10px"></textarea>
+      <button type="button" class="btn sec full" id="pasteBtn">שחזר מטקסט</button>
+    </div>
+    <div class="card">
+      <h2>איפוס</h2>
+      <button type="button" class="btn danger full" id="resetBtn">🗑️ מחק את כל הנתונים</button>
+    </div>
+  </section>
+
+  <div class="footer">סעודת שמחת תורה · מלכיאל</div>
+</div>
+<div class="toast" id="toast"></div>
+<div id="printArea"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var KEY = 'simchatTorah.v1';
+  var SECTIONS = { men: { label: 'גברים', table: 'menTable', manual: 'manualMen' }, women: { label: 'נשים', table: 'womenTable', manual: 'manualWomen' } };
+  var DEFAULT_INVITE = 'שלום {שם}! 🎉\nהנכם מוזמנים לסעודת שמחת תורה.\nנשמח לראותכם!\nנא אשרו הגעה ומספר משתתפים (גברים / נשים).';
+
+  // ---------- שכבת שמירה עמידה ----------
+  // localStorage, ואם אינו זמין sessionStorage ו-window.name. מעל כולם יש סנכרון ענן.
+  function probe(getter) {
+    try {
+      var s = getter();
+      if (!s) return null;
+      var t = '__probe__' + Date.now();
+      s.setItem(t, '1');
+      var ok = s.getItem(t) === '1';
+      s.removeItem(t);
+      return ok ? s : null;
+    } catch (e) { return null; }
+  }
+  var local = probe(function () { return window.localStorage; });
+  var session = probe(function () { return window.sessionStorage; });
+  var isFile = location.protocol === 'file:';
+  var memory = null;
+
+  function readWindowName() {
+    try {
+      if (window.name && window.name.indexOf(KEY + '=') === 0) return window.name.slice(KEY.length + 1);
+    } catch (e) {}
+    return null;
+  }
+
+  function loadRaw() {
+    var candidates = [];
+    try { if (local) candidates.push(local.getItem(KEY)); } catch (e) {}
+    try { if (session) candidates.push(session.getItem(KEY)); } catch (e) {}
+    candidates.push(readWindowName());
+    candidates.push(memory);
+    var best = null, bestTs = -1;
+    for (var i = 0; i < candidates.length; i++) {
+      var raw = candidates[i];
+      if (!raw) continue;
+      try {
+        var obj = JSON.parse(raw);
+        var ts = obj && obj.savedAt ? obj.savedAt : 0;
+        if (ts > bestTs) { best = obj; bestTs = ts; }
+      } catch (e) {}
+    }
+    return best;
+  }
+
+  function saveRaw(obj, keepTs) {
+    if (!keepTs) obj.savedAt = Date.now();
+    var raw = JSON.stringify(obj);
+    var okLocal = false;
+    memory = raw;
+    try { if (local) { local.setItem(KEY, raw); okLocal = local.getItem(KEY) === raw; } } catch (e) { okLocal = false; }
+    try { if (session) session.setItem(KEY, raw); } catch (e) {}
+    try { window.name = KEY + '=' + raw; } catch (e) {}
+    if (local && !okLocal) showBanner('⚠️ השמירה בזיכרון הדפדפן נכשלה (ייתכן שהאחסון מלא או חסום). שמור קובץ גיבוי בלשונית "גיבוי".');
+    return okLocal;
+  }
+
+  // ---------- נתונים ----------
+  function emptyState() { return { families: [], tables: [], expenses: [], budget: 0, inviteText: DEFAULT_INVITE, savedAt: 0 }; }
+  // Firebase מוחק מערכים ריקים ושדות ריקים, ולכן משלימים אותם בכל טעינה
+  function normalize(s) {
+    s = s || emptyState();
+    if (!s.families) s.families = [];
+    if (!s.tables) s.tables = [];
+    if (!s.expenses) s.expenses = [];
+    if (s.inviteText == null) s.inviteText = DEFAULT_INVITE;
+    s.families.forEach(function (f) {
+      if (f.men == null) f.men = f.adults || 0;
+      if (f.women == null) f.women = f.kids || 0;
+      if (f.menTable == null) f.menTable = f.tableId || '';
+      if (f.womenTable == null) f.womenTable = '';
+      if (f.group == null) f.group = guessGroup(f.name);
+      delete f.adults; delete f.kids; delete f.tableId;
+    });
+    s.tables.forEach(function (t) { if (!t.section) t.section = 'men'; });
+    return s;
+  }
+
+  // שם המשפחה = המילה האחרונה בשם (בלי תוספות כמו "חדש"). שם של מילה אחת = אין קשר ידוע.
+  function guessGroup(name) {
+    var words = String(name || '').trim().split(/\s+/).filter(function (w) { return w && w !== 'חדש' && w !== 'החדש'; });
+    return words.length >= 2 ? words[words.length - 1] : '';
+  }
+
+  var state = normalize(loadRaw());
+
+  function uid() {
+    // לא משתמשים ב-crypto.randomUUID: הוא לא קיים בהקשר לא מאובטח (file://) ומפיל את הקוד
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  }
+  function num(v) { var n = parseFloat(v); return isNaN(n) || n < 0 ? 0 : n; }
+  function int(v) { return Math.round(num(v)); }
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function fmt(n) { return Math.round(n).toLocaleString('he-IL'); }
+  function $(id) { return document.getElementById(id); }
+  function peopleOf(f) { return int(f.men) + int(f.women); }
+  function findById(arr, id) { for (var i = 0; i < arr.length; i++) if (arr[i].id === id) return arr[i]; return null; }
+  function removeById(arr, id) { for (var i = 0; i < arr.length; i++) if (arr[i].id === id) { arr.splice(i, 1); return; } }
+  function findByName(name) {
+    var n = String(name || '').trim();
+    for (var i = 0; i < state.families.length; i++) if (state.families[i].name.trim() === n) return state.families[i];
+    return null;
+  }
+  function byName(a, b) { return a.name.localeCompare(b.name, 'he'); }
+
+  function persist() { autoSeat(); saveRaw(state); pushRemote(); render(); announceMoves(); }
+  function announceMoves() {
+    if (!seatMoves.length) return;
+    toast('🔀 ' + seatMoves.join(' · '));
+    seatMoves = [];
+  }
+
+  var toastTimer;
+  function toast(msg) {
+    var t = $('toast'); t.textContent = msg; t.className = 'toast show';
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.className = 'toast'; }, 2000);
+  }
+  function showBanner(html) { var b = $('storageBanner'); b.innerHTML = html; b.className = 'banner show'; }
+  function closest(el, sel) { return el && el.closest ? el.closest(sel) : null; }
+
+  // ---------- סנכרון ענן (Firebase של סריקוב, נתיב נפרד) ----------
+  var FB_PATH = 'simchat-torah/state';
+  var fbRef = null, fbConnected = false;
+  function setSync(mode) {
+    var el = $('syncStatus');
+    if (mode === 'on') { el.textContent = '☁️ מסונכרן בין המכשירים'; el.className = 'sync on'; }
+    else if (mode === 'off') { el.textContent = '📴 לא מחובר — נשמר במכשיר, יסונכרן בחיבור הבא'; el.className = 'sync off'; }
+    else { el.textContent = '⏳ מתחבר לסנכרון...'; el.className = 'sync'; }
+  }
+  function pushRemote() {
+    if (!fbRef) return;
+    try { fbRef.set(JSON.parse(JSON.stringify(state))); } catch (e) {}
+  }
+  function initSync() {
+    try {
+      if (!window.firebase || !firebase.database) { setSync('off'); return; }
+      firebase.initializeApp({
+        apiKey: 'AIzaSyCtTCUNeYzRMlSLe2VJs_ols818QI1ZuTA',
+        authDomain: 'sarikow-3342b.firebaseapp.com',
+        databaseURL: 'https://sarikow-3342b-default-rtdb.europe-west1.firebasedatabase.app',
+        projectId: 'sarikow-3342b',
+        storageBucket: 'sarikow-3342b.firebasestorage.app',
+        messagingSenderId: '95850039076',
+        appId: '1:95850039076:web:4149b5724c52fbdaa315b1'
+      });
+      var db = firebase.database();
+      fbRef = db.ref(FB_PATH);
+      db.ref('.info/connected').on('value', function (s) {
+        fbConnected = !!s.val();
+        setSync(fbConnected ? 'on' : 'off');
+        storageReport();
+      });
+      fbRef.on('value', function (snap) {
+        var remote = snap.val();
+        var rTs = remote && remote.savedAt ? remote.savedAt : 0, lTs = state.savedAt || 0;
+        if (rTs > lTs) {
+          state = normalize(remote);
+          if (autoSeatChanged()) { persist(); storageReport(); return; }
+          seatMoves = [];
+          saveRaw(state, true);
+          render(); storageReport();
+        } else if (lTs > rTs) {
+          pushRemote();
+        }
+      });
+      setTimeout(function () { if (!fbConnected) setSync('off'); }, 6000);
+    } catch (e) { fbRef = null; setSync('off'); }
+  }
+
+  // ---------- לשוניות ----------
+  function showTab(name) {
+    var btns = document.querySelectorAll('#tabs button');
+    for (var i = 0; i < btns.length; i++) btns[i].className = btns[i].getAttribute('data-tab') === name ? 'active' : '';
+    var secs = document.querySelectorAll('section');
+    for (var j = 0; j < secs.length; j++) secs[j].className = secs[j].id === 'tab-' + name ? 'active' : '';
+  }
+  $('tabs').addEventListener('click', function (e) {
+    var b = closest(e.target, 'button');
+    if (b && b.getAttribute('data-tab')) showTab(b.getAttribute('data-tab'));
+  });
+
+  // ---------- משפחות: טופס ----------
+  function resetFamilyForm() {
+    $('fId').value = ''; $('fName').value = ''; $('fGroup').value = ''; $('fPhone').value = '';
+    $('fMen').value = '1'; $('fWomen').value = '1'; $('fStatus').value = 'yes'; $('fNotes').value = '';
+    $('familyFormTitle').textContent = 'הוספת משפחה';
+    $('familySubmit').textContent = '➕ הוסף משפחה';
+    $('familyCancel').style.display = 'none';
+    groupTouched = false;
+  }
+  var groupTouched = false;
+  $('fGroup').addEventListener('input', function () { groupTouched = true; });
+  $('fName').addEventListener('input', function () {
+    // בחירת שם קיים מהרשימה הנפתחת עוברת לעריכה שלו, כדי שלא ייווצרו כפילויות
+    var existing = !$('fId').value ? findByName(this.value) : null;
+    if (existing) { editFamily(existing.id); toast('נפתחה לעריכה: ' + existing.name); return; }
+    if (!groupTouched) $('fGroup').value = guessGroup(this.value);
+  });
+
+  function submitFamily(e) {
+    if (e) e.preventDefault();
+    var name = $('fName').value.trim();
+    if (!name) { toast('יש להזין שם'); $('fName').focus(); return; }
+    var data = {
+      name: name, group: $('fGroup').value.trim(), phone: $('fPhone').value.trim(),
+      men: int($('fMen').value), women: int($('fWomen').value),
+      status: $('fStatus').value, notes: $('fNotes').value.trim()
+    };
+    var id = $('fId').value;
+    if (id) {
+      var f = findById(state.families, id);
+      if (f) for (var k in data) f[k] = data[k];
+      toast('נשמר');
+    } else {
+      if (findByName(name)) { toast('השם כבר קיים ברשימה'); return; }
+      data.id = uid(); data.menTable = ''; data.womenTable = '';
+      state.families.push(data);
+      toast('נוסף: ' + name);
+    }
+    resetFamilyForm();
+    persist();
+  }
+  // מאזינים גם ל-submit וגם ללחיצה ישירה, כך שהכפתור מגיב גם בדפדפנים שבהם שליחת הטופס נחסמת
+  $('familyForm').addEventListener('submit', submitFamily);
+  $('familySubmit').addEventListener('click', function (e) { e.preventDefault(); submitFamily(); });
+  $('familyCancel').addEventListener('click', resetFamilyForm);
+
+  function editFamily(id) {
+    var f = findById(state.families, id); if (!f) return;
+    $('fId').value = f.id; $('fName').value = f.name; $('fGroup').value = f.group || ''; $('fPhone').value = f.phone || '';
+    $('fMen').value = int(f.men); $('fWomen').value = int(f.women); $('fStatus').value = f.status; $('fNotes').value = f.notes || '';
+    $('familyFormTitle').textContent = 'עריכת ' + f.name;
+    $('familySubmit').textContent = '💾 שמור שינויים';
+    $('familyCancel').style.display = 'block';
+    groupTouched = true;
+    showTab('guests');
+    window.scrollTo(0, 0);
+  }
+
+  // ---------- משפחות: רשימה עם עריכה ישירה ----------
+  var statusLabel = { invited: 'הוזמנו', yes: 'נרשמו', no: 'לא מגיעים' };
+  var statusClass = { invited: 'p-invited', yes: 'p-yes', no: 'p-no' };
+
+  // מלא = כל מי שבא (גברים ו/או נשים) יושב בשולחן; חלקי = רק צד אחד שובץ
+  function seatState(f) {
+    if (f.status === 'no') return '';
+    var need = 0, got = 0;
+    if (int(f.men)) { need++; if (f.menTable) got++; }
+    if (int(f.women)) { need++; if (f.womenTable) got++; }
+    return !got ? '' : got === need ? 'seat-full' : 'seat-part';
+  }
+  function tableName(id) { var t = id ? findById(state.tables, id) : null; return t ? t.name : ''; }
+  function stepper(f, field, label) {
+    return '<span class="step">' + label +
+      '<button type="button" data-act="dec" data-field="' + field + '" data-id="' + f.id + '">−</button>' +
+      '<input type="number" inputmode="numeric" min="0" data-act="qty" data-field="' + field + '" data-id="' + f.id + '" value="' + int(f[field]) + '">' +
+      '<button type="button" data-act="inc" data-field="' + field + '" data-id="' + f.id + '">+</button></span>';
+  }
+  function matches(f, q) { return !q || (f.name + ' ' + (f.group || '') + ' ' + (f.phone || '') + ' ' + (f.notes || '')).indexOf(q) !== -1; }
+
+  function editingInside(id) {
+    var a = document.activeElement;
+    return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && closest(a, '#' + id);
+  }
+  var pendingRender = false;
+
+  function renderFamilies() {
+    // לא בונים מחדש את הרשימה בזמן שמקלידים בתוכה (למשל כשמגיע עדכון מהענן)
+    if (editingInside('familyList')) { pendingRender = true; return; }
+    var q = $('guestSearch').value.trim(), filt = $('guestFilter').value, html = '';
+    state.families.filter(function (f) { return (filt === 'all' || f.status === filt) && matches(f, q); }).sort(byName).forEach(function (f) {
+      var seats = [];
+      if (f.menTable) seats.push('👨 ' + esc(tableName(f.menTable)));
+      if (f.womenTable) seats.push('👩 ' + esc(tableName(f.womenTable)));
+      var ss = seatState(f);
+      html += '<div class="item' + (ss ? ' ' + ss : '') + '"><div class="main">' +
+        (ss === 'seat-full' ? '<span class="seat-tag">✓ שובצו</span>' : ss === 'seat-part' ? '<span class="seat-tag">◐ שובצו חלקית</span>' : '') +
+        '<input class="name-edit" data-act="name" data-id="' + f.id + '" value="' + esc(f.name) + '" aria-label="שם">' +
+        '<div class="qty">' + stepper(f, 'men', 'גברים') + stepper(f, 'women', 'נשים') + '<span class="step">סה״כ <b style="color:var(--text)">' + peopleOf(f) + '</b></span></div>' +
+        '<div class="s">' + (f.group ? 'משפחת ' + esc(f.group) : 'ללא קשר משפחתי') +
+        (seats.length ? ' · 🪑 ' + seats.join(' · ') : '') +
+        (f.phone ? ' · ' + esc(f.phone) : '') + (f.notes ? '<br>' + esc(f.notes) : '') + '</div></div>' +
+        '<div class="acts">' +
+        '<button type="button" class="pill ' + statusClass[f.status] + '" data-act="cycle" data-id="' + f.id + '">' + statusLabel[f.status] + '</button>' +
+        '<a class="btn wa sm" data-act="wa" data-id="' + f.id + '" href="' + waLink(f) + '" target="_blank" rel="noopener" title="שלח הזמנה בוואטסאפ">📲</a>' +
+        '<button type="button" class="btn sec sm" data-act="edit" data-id="' + f.id + '" title="עריכה מלאה">✏️</button>' +
+        '<button type="button" class="btn sec sm" data-act="del" data-id="' + f.id + '" title="מחיקה">🗑️</button></div></div>';
+    });
+    $('familyList').innerHTML = html || '<div class="empty">' + (state.families.length ? 'אין תוצאות' : 'עדיין לא נוספו משפחות') + '</div>';
+  }
+  $('guestSearch').addEventListener('input', renderFamilies);
+  $('guestFilter').addEventListener('change', renderFamilies);
+
+  $('familyList').addEventListener('click', function (e) {
+    var b = closest(e.target, '[data-act]'); if (!b) return;
+    var act = b.getAttribute('data-act'), f = findById(state.families, b.getAttribute('data-id'));
+    if (!f) return;
+    if (act === 'edit') editFamily(f.id);
+    else if (act === 'cycle') { f.status = f.status === 'yes' ? 'invited' : f.status === 'invited' ? 'no' : 'yes'; persist(); }
+    else if (act === 'inc' || act === 'dec') {
+      var field = b.getAttribute('data-field');
+      f[field] = Math.max(0, int(f[field]) + (act === 'inc' ? 1 : -1));
+      persist();
+    }
+    else if (act === 'wa') markInvited(f);
+    else if (act === 'del' && confirm('למחוק את ' + f.name + '?')) { removeById(state.families, f.id); persist(); }
+  });
+  $('familyList').addEventListener('change', function (e) {
+    var el = e.target, f = findById(state.families, el.getAttribute('data-id')); if (!f) return;
+    var act = el.getAttribute('data-act');
+    if (act === 'qty') { f[el.getAttribute('data-field')] = int(el.value); persist(); }
+    if (act === 'name') {
+      var v = el.value.trim();
+      if (!v) { el.value = f.name; return; }
+      if (v !== f.name) {
+        // אם שם המשפחה לשיבוץ נגזר מהשם הישן, מעדכנים גם אותו
+        if ((f.group || '') === guessGroup(f.name)) f.group = guessGroup(v);
+        f.name = v; persist(); toast('השם עודכן');
+      }
+    }
+  });
+  $('familyList').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && e.target.tagName === 'INPUT') e.target.blur();
+  });
+  document.addEventListener('focusout', function () {
+    setTimeout(function () { if (pendingRender && !editingInside('familyList') && !editingInside('inviteList')) { pendingRender = false; render(); } }, 0);
+  });
+
+  // ---------- הזמנות בוואטסאפ ----------
+  function intlPhone(p) {
+    var d = String(p || '').replace(/\D/g, '');
+    if (!d) return '';
+    if (d.indexOf('972') === 0) return d;
+    if (d.charAt(0) === '0') return '972' + d.slice(1);
+    return d;
+  }
+  function inviteMessage(f) { return (state.inviteText || DEFAULT_INVITE).split('{שם}').join(f.name); }
+  function waLink(f) { return 'https://wa.me/' + intlPhone(f.phone) + '?text=' + encodeURIComponent(inviteMessage(f)); }
+  function markInvited(f) {
+    // הקישור עצמו נפתח בלשונית חדשה; כאן רק מסמנים שנשלח
+    f.invitedAt = Date.now();
+    if (f.status === 'no') f.status = 'invited';
+    setTimeout(persist, 300);
+  }
+
+  var inviteTimer;
+  $('inviteText').addEventListener('input', function () {
+    var v = this.value;
+    clearTimeout(inviteTimer);
+    inviteTimer = setTimeout(function () { state.inviteText = v; saveRaw(state); pushRemote(); }, 600);
+  });
+  $('inviteSearch').addEventListener('input', renderInvites);
+  $('inviteFilter').addEventListener('change', renderInvites);
+
+  function renderInvites() {
+    if (document.activeElement !== $('inviteText')) $('inviteText').value = state.inviteText || DEFAULT_INVITE;
+    if (editingInside('inviteList')) { pendingRender = true; return; }
+    var q = $('inviteSearch').value.trim(), filt = $('inviteFilter').value, html = '';
+    state.families.filter(function (f) {
+      return matches(f, q) && (filt === 'all' || (filt === 'sent' ? !!f.invitedAt : !f.invitedAt));
+    }).sort(byName).forEach(function (f) {
+      html += '<div class="item"><div class="main"><div class="t">' + esc(f.name) + '</div>' +
+        '<div class="s">' + (f.invitedAt ? '<span class="sent">✓ נשלח ' + new Date(f.invitedAt).toLocaleDateString('he-IL') + '</span>' : 'טרם נשלח') + '</div></div>' +
+        '<input type="tel" inputmode="tel" data-act="phone" data-id="' + f.id + '" value="' + esc(f.phone || '') + '" placeholder="טלפון" style="flex:0 0 140px">' +
+        '<a class="btn wa sm" data-act="wa" data-id="' + f.id + '" href="' + waLink(f) + '" target="_blank" rel="noopener">📲 שלח</a>' +
+        (f.invitedAt ? '<button type="button" class="btn sec sm" data-act="unsent" data-id="' + f.id + '" title="סמן כלא נשלח">↺</button>' : '') + '</div>';
+    });
+    $('inviteList').innerHTML = html || '<div class="empty">' + (filt === 'unsent' && state.families.length ? 'ההזמנות נשלחו לכולם 🎉' : 'אין משפחות להצגה') + '</div>';
+  }
+  $('inviteList').addEventListener('click', function (e) {
+    var b = closest(e.target, '[data-act]'); if (!b) return;
+    var f = findById(state.families, b.getAttribute('data-id')); if (!f) return;
+    if (b.getAttribute('data-act') === 'wa') markInvited(f);
+    if (b.getAttribute('data-act') === 'unsent') { delete f.invitedAt; persist(); }
+  });
+  $('inviteList').addEventListener('change', function (e) {
+    var el = e.target; if (el.getAttribute('data-act') !== 'phone') return;
+    var f = findById(state.families, el.getAttribute('data-id')); if (!f) return;
+    f.phone = el.value.trim(); persist();
+  });
+
+  // ---------- הושבה ----------
+  var curSec = 'men';
+  function countIn(f, sec) { return int(f[sec]); }
+  function seatedCount(tableId, sec) {
+    var key = SECTIONS[sec].table;
+    return state.families.reduce(function (s, f) { return s + (f[key] === tableId && f.status !== 'no' ? countIn(f, sec) : 0); }, 0);
+  }
+
+  // שיבוץ אוטומטי: רק משפחות שנרשמו ויש להן לפחות קרוב רשום נוסף (אותו שם משפחה).
+  // משתמש רק בשולחנות הקיימים באולם (לא יוצר חדשים), לא מזיז אף אחד שכבר שובץ,
+  // ולא משבץ מחדש מי שהוסר ידנית משולחן. אם אין שולחן פנוי מתאים — נשאר לשיבוץ ידני.
+  function autoSeat() {
+    Object.keys(SECTIONS).forEach(function (sec) {
+      var key = SECTIONS[sec].table, manual = SECTIONS[sec].manual;
+      state.families.forEach(function (f) {
+        if (f[key] && (f.status === 'no' || !countIn(f, sec) || !findById(state.tables, f[key]))) f[key] = '';
+      });
+      // שולחן שהתרוקן משחרר את שיוך המשפחה שלו
+      state.tables.forEach(function (t) { if (t.section === sec && t.group && !seatedCount(t.id, sec)) t.group = ''; });
+      var groups = {};
+      state.families.forEach(function (f) {
+        if (f.status !== 'yes' || !f.group || !countIn(f, sec)) return;
+        (groups[f.group] = groups[f.group] || []).push(f);
+      });
+      Object.keys(groups).forEach(function (g) {
+        var fams = groups[g];
+        if (fams.length < 2) return;
+        fams.forEach(function (f) {
+          if (f[key] || f[manual]) return;
+          var need = countIn(f, sec), target = null;
+          // קודם שולחן שכבר יושבים בו קרובים, אחר כך שולחן על שם המשפחה
+          var mates = fams.filter(function (o) { return o[key]; }).map(function (o) { return o[key]; });
+          // אם השולחן של הקרובים קטן מדי — מעבירים את כולם לשולחן ריק גדול יותר, במקום לפצל את המשפחה
+          var home = mates.length ? findById(state.tables, mates[0]) : null;
+          if (home && seatedCount(home.id, sec) + need > home.cap) {
+            var bigger = emptyTableFor(sec, seatedCount(home.id, sec) + need);
+            if (bigger) { moveTable(home, bigger, sec); target = bigger; }
+          }
+          state.tables.forEach(function (t) {
+            if (target || t.section !== sec) return;
+            if ((mates.indexOf(t.id) !== -1 || t.group === g) && seatedCount(t.id, sec) + need <= t.cap) target = t;
+          });
+          if (!target) {
+            // שולחן ריק: הקטן ביותר שמכיל את כל הקרובים שממתינים, אחרת הגדול ביותר שמכיל לפחות את המשפחה הזו
+            var groupNeed = fams.reduce(function (s, o) { return s + (o[key] || o[manual] ? 0 : countIn(o, sec)); }, 0);
+            var empties = state.tables.filter(function (t) { return t.section === sec && !t.group && !seatedCount(t.id, sec); })
+              .sort(function (a, b) { return a.cap - b.cap; });
+            for (var i = 0; i < empties.length && !target; i++) if (empties[i].cap >= groupNeed) target = empties[i];
+            for (var j = empties.length - 1; j >= 0 && !target; j--) if (empties[j].cap >= need) target = empties[j];
+            if (target) target.group = g;
+          }
+          if (target) f[key] = target.id;
+        });
+      });
+      // שולחן בחריגה (למשל 14 איש בשולחן של 12) עובר כולו לשולחן ריק שמכיל את כולם
+      state.tables.forEach(function (t) {
+        if (t.section !== sec) return;
+        var n = seatedCount(t.id, sec);
+        if (n <= t.cap) return;
+        var to = emptyTableFor(sec, n);
+        if (to) moveTable(t, to, sec);
+      });
+    });
+  }
+
+  // השולחן הריק הקטן ביותר בצד הזה שיש בו לפחות need מקומות
+  function emptyTableFor(sec, need) {
+    var best = null;
+    state.tables.forEach(function (t) {
+      if (t.section !== sec || t.group || seatedCount(t.id, sec) || t.cap < need) return;
+      if (!best || t.cap < best.cap) best = t;
+    });
+    return best;
+  }
+  var seatMoves = [];
+  function moveTable(from, to, sec) {
+    var key = SECTIONS[sec].table;
+    state.families.forEach(function (f) { if (f[key] === from.id) f[key] = to.id; });
+    to.group = from.group || '';
+    from.group = '';
+    seatMoves.push((to.group ? 'משפחת ' + to.group : 'היושבים ב' + from.name) + ' (' + SECTIONS[sec].label + ') הועברו מ' + from.name + ' (' + from.cap + ') ל' + to.name + ' (' + to.cap + ')');
+  }
+
+  // מריץ שיבוץ אוטומטי ומחזיר true אם משהו השתנה (למשל אחרי טעינת נתונים מהענן)
+  function autoSeatChanged() {
+    var before = JSON.stringify([state.families, state.tables]);
+    autoSeat();
+    return JSON.stringify([state.families, state.tables]) !== before;
+  }
+
+  function setSection(sec) {
+    curSec = sec;
+    var btns = document.querySelectorAll('#sectionSeg button');
+    for (var i = 0; i < btns.length; i++) btns[i].className = btns[i].getAttribute('data-sec') === sec ? 'active' : '';
+    renderSeating();
+  }
+  $('sectionSeg').addEventListener('click', function (e) {
+    var b = closest(e.target, 'button'); if (b) setSection(b.getAttribute('data-sec'));
+  });
+
+  $('tableForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('tName').value.trim(), count = Math.min(50, int($('tCount').value) || 1), cap = int($('tCap').value) || 12;
+    var n = state.tables.filter(function (t) { return t.section === curSec; }).length;
+    for (var i = 0; i < count; i++) {
+      state.tables.push({ id: uid(), name: name ? name + (count > 1 ? ' ' + (i + 1) : '') : 'שולחן ' + (n + i + 1), cap: cap, section: curSec });
+    }
+    $('tName').value = ''; $('tCount').value = '1';
+    persist(); toast(count > 1 ? 'נוספו ' + count + ' שולחנות' : 'השולחן נוסף');
+  });
+
+  // שמות המשפחות שיושבות בשולחן, לתצוגה ברשימת השיבוץ
+  function tableFamilies(t, sec) {
+    var key = SECTIONS[sec].table, names = [];
+    state.families.forEach(function (f) {
+      if (f[key] !== t.id || f.status === 'no') return;
+      var n = f.group || f.name;
+      if (names.indexOf(n) === -1) names.push(n);
+    });
+    if (t.group && names.indexOf(t.group) === -1) names.unshift(t.group);
+    return names.length > 3 ? names.slice(0, 3).join(', ') + '…' : names.join(', ');
+  }
+
+  function tableOptions(sec, placeholder, excludeId) {
+    var o = '<option value="">' + (placeholder || '— שבץ לשולחן —') + '</option>';
+    state.tables.filter(function (t) { return t.section === sec && t.id !== excludeId; }).forEach(function (t) {
+      var who = tableFamilies(t, sec);
+      o += '<option value="' + t.id + '">' + esc(t.name) + (who ? ' · ' + esc(who) : ' · פנוי') + ' (' + seatedCount(t.id, sec) + '/' + t.cap + (seatedCount(t.id, sec) > t.cap ? ' ⚠️ חריגה ' + (seatedCount(t.id, sec) - t.cap) : '') + ')</option>';
+    });
+    return o;
+  }
+  function renderSeating() {
+    var sec = curSec, key = SECTIONS[sec].table, label = SECTIONS[sec].label, html = '';
+    $('tableFormTitle').textContent = 'הוספת שולחנות — ' + label;
+    var tables = state.tables.filter(function (t) { return t.section === sec; });
+
+    // סיכום אולם: מקומות מול רשומים
+    var seats = tables.reduce(function (s, t) { return s + int(t.cap); }, 0);
+    var reg = state.families.reduce(function (s, f) { return s + (f.status === 'yes' ? countIn(f, sec) : 0); }, 0);
+    var seatedNow = tables.reduce(function (s, t) { return s + seatedCount(t.id, sec); }, 0);
+    var over = tables.filter(function (t) { return seatedCount(t.id, sec) > t.cap; });
+    var overTxt = over.length ? '<div class="banner show" style="margin:8px 0 0">⚠️ חריגה: ' + over.map(function (t) { return esc(t.name) + ' (' + t.cap + ') — עודף ' + (seatedCount(t.id, sec) - t.cap); }).join(' · ') + '</div>' : '';
+    var sizes = {};
+    tables.forEach(function (t) { sizes[t.cap] = (sizes[t.cap] || 0) + 1; });
+    var sizeTxt = Object.keys(sizes).sort(function (a, b) { return b - a; }).map(function (c) { return sizes[c] + ' × ' + c; }).join(' + ');
+    $('hallSummary').innerHTML = '<h2>🏛️ אולם — ' + label + '</h2>' +
+      '<div class="muted">' + (tables.length ? tables.length + ' שולחנות (' + sizeTxt + ') = <b style="color:var(--text)">' + seats + ' מקומות</b>' : 'עדיין לא הוגדרו שולחנות') +
+      '<br>רשומים: <b style="color:var(--text)">' + reg + '</b> · הושבו: ' + seatedNow + ' · מקומות פנויים: ' + Math.max(0, seats - seatedNow) + '</div>' +
+      overTxt +
+      (tables.length && reg > seats ? '<div class="banner show" style="margin:8px 0 0">⚠️ חסרים <b>' + (reg - seats) + '</b> מקומות ב' + label + ' — ' + reg + ' רשומים מול ' + seats + ' מקומות.</div>' : '');
+    tables.forEach(function (t) {
+      var n = seatedCount(t.id, sec), pct = t.cap ? Math.min(100, n / t.cap * 100) : 0;
+      var fams = state.families.filter(function (f) { return f[key] === t.id && f.status !== 'no'; }).sort(byName);
+      html += '<div class="card"><div class="item" style="border:0;padding:0"><div class="main"><div class="t">🪑 ' + esc(t.name) + (t.group ? ' <span class="muted">· משפחת ' + esc(t.group) + ' (אוטומטי)</span>' : '') + '</div>' +
+        '<div class="s">' + n + ' מתוך ' + t.cap + ' מקומות' + (n > t.cap ? ' · <b style="color:#fca5a5">⚠️ חריגה של ' + (n - t.cap) + ' — ' +
+          (emptyTableFor(sec, n) ? 'יש שולחן פנוי מתאים' : 'אין שולחן פנוי גדול מספיק, צריך להעביר משפחה ידנית') + '</b>' : '') + '</div></div>' +
+        '<div class="acts"><button type="button" class="btn sec sm" data-act="edittable" data-id="' + t.id + '">✏️</button>' +
+        '<button type="button" class="btn sec sm" data-act="deltable" data-id="' + t.id + '">🗑️</button></div></div>' +
+        '<div class="bar"><div class="' + (n > t.cap ? 'over' : '') + '" style="width:' + pct + '%"></div></div>' +
+        (fams.length && tables.length > 1 ? '<select class="move-all" data-act="moveall" data-id="' + t.id + '">' + tableOptions(sec, '🔁 העבר / החלף את כל השולחן…', t.id) + '</select>' : '') +
+        '<div class="list" style="margin-top:6px">';
+      fams.forEach(function (f) {
+        html += '<div class="item"><div class="main"><div class="t">' + esc(f.name) + '</div><div class="s">' + countIn(f, sec) + ' ' + label + '</div></div>' +
+          (tables.length > 1 ? '<select data-act="movefam" data-id="' + f.id + '" style="flex:0 0 150px">' + tableOptions(sec, '↪ העבר ל…', t.id) + '</select>' : '') +
+          '<button type="button" class="btn sec sm" data-act="unseat" data-id="' + f.id + '">הסר</button></div>';
+      });
+      html += '</div></div>';
+    });
+    $('tableList').innerHTML = html || '<div class="card empty">עדיין אין שולחנות ב' + label + '</div>';
+
+    var un = state.families.filter(function (f) { return !f[key] && f.status !== 'no' && countIn(f, sec); }).sort(byName), uh = '';
+    var opts = tableOptions(sec);
+    un.forEach(function (f) {
+      uh += '<div class="item"><div class="main"><div class="t">' + esc(f.name) + '</div><div class="s">' + countIn(f, sec) + ' ' + label + ' · ' + statusLabel[f.status] +
+        (f.group ? '' : ' · ללא קשר משפחתי') + '</div></div>' +
+        (tables.length ? '<select data-act="seat" data-id="' + f.id + '" style="flex:0 0 170px">' + opts + '</select>' : '') + '</div>';
+    });
+    $('unseatedTitle').textContent = 'לא הושבו — ' + label + ' (' + un.reduce(function (s, f) { return s + countIn(f, sec); }, 0) + ')';
+    $('unseatedList').innerHTML = uh || '<div class="empty">' + (state.families.length ? 'כולם הושבו 🎉' : 'אין משפחות') + '</div>';
+  }
+  // החלפת שולחן למשפחה אחת, או העברת/החלפת שולחן שלם
+  $('tableList').addEventListener('change', function (e) {
+    var s = e.target, act = s.getAttribute('data-act'), sec = curSec, key = SECTIONS[sec].table;
+    if (!s.value || (act !== 'movefam' && act !== 'moveall')) return;
+    var to = findById(state.tables, s.value); if (!to) return;
+    if (act === 'movefam') {
+      var f = findById(state.families, s.getAttribute('data-id')); if (!f) return;
+      f[key] = to.id; persist(); toast(f.name + ' הועברו ל' + to.name);
+      return;
+    }
+    var from = findById(state.tables, s.getAttribute('data-id')); if (!from) return;
+    var swap = seatedCount(to.id, sec) > 0;
+    state.families.forEach(function (f) {
+      if (f[key] === from.id) f[key] = to.id;
+      else if (f[key] === to.id) f[key] = from.id;
+    });
+    var g = from.group || ''; from.group = to.group || ''; to.group = g;
+    persist();
+    toast(swap ? '🔁 ' + from.name + ' ו' + to.name + ' הוחלפו' : 'כל היושבים ב' + from.name + ' הועברו ל' + to.name);
+  });
+
+  $('tableList').addEventListener('click', function (e) {
+    var b = closest(e.target, '[data-act]'); if (!b) return;
+    var id = b.getAttribute('data-id'), act = b.getAttribute('data-act'), sec = curSec;
+    if (act === 'unseat') {
+      var f = findById(state.families, id);
+      if (f) { f[SECTIONS[sec].table] = ''; f[SECTIONS[sec].manual] = true; persist(); }
+    }
+    var t = findById(state.tables, id); if (!t) return;
+    if (act === 'edittable') {
+      var nm = prompt('שם השולחן:', t.name); if (nm == null) return;
+      var cp = prompt('מספר מקומות:', t.cap); if (cp == null) return;
+      if (nm.trim()) t.name = nm.trim();
+      t.cap = int(cp) || t.cap;
+      persist();
+    }
+    if (act === 'deltable' && confirm('למחוק את ' + t.name + '? המשפחות שבו יחזרו לרשימת "לא הושבו".')) {
+      state.families.forEach(function (f) {
+        if (f[SECTIONS[sec].table] === id) { f[SECTIONS[sec].table] = ''; f[SECTIONS[sec].manual] = true; }
+      });
+      removeById(state.tables, id); persist();
+    }
+  });
+  // ---------- הדפסה ----------
+  function printHeader(title) {
+    return '<h1>סעודת שמחת תורה — ' + title + '</h1><div class="sub">הודפס ' + new Date().toLocaleString('he-IL') + '</div>';
+  }
+  function printTables() {
+    var html = '';
+    Object.keys(SECTIONS).forEach(function (sec) {
+      var key = SECTIONS[sec].table, label = SECTIONS[sec].label;
+      var tables = state.tables.filter(function (t) { return t.section === sec; });
+      var seats = tables.reduce(function (s, t) { return s + int(t.cap); }, 0);
+      var seated = tables.reduce(function (s, t) { return s + seatedCount(t.id, sec); }, 0);
+      html += '<div class="sec">' + printHeader('שולחנות ' + label) +
+        '<h2>' + label + ' · ' + tables.length + ' שולחנות · ' + seated + ' מתוך ' + seats + ' מקומות</h2><div class="grid">';
+      tables.forEach(function (t) {
+        var fams = state.families.filter(function (f) { return f[key] === t.id && f.status !== 'no'; }).sort(byName);
+        html += '<div class="tb"><h3><span>' + esc(t.name) + (t.group ? ' · ' + esc(t.group) : '') + '</span><small>' + seatedCount(t.id, sec) + '/' + t.cap + (seatedCount(t.id, sec) > t.cap ? ' · חריגה ' + (seatedCount(t.id, sec) - t.cap) : '') + '</small></h3>';
+        fams.forEach(function (f) { html += '<div><span>' + esc(f.name) + '</span><span>' + countIn(f, sec) + '</span></div>'; });
+        if (!fams.length) html += '<div class="empty">— פנוי —</div>';
+        html += '</div>';
+      });
+      html += '</div>';
+      var un = state.families.filter(function (f) { return !f[key] && f.status === 'yes' && countIn(f, sec); }).sort(byName);
+      if (un.length) {
+        html += '<div class="un"><h2>טרם שובצו — ' + label + ' (' + un.reduce(function (s, f) { return s + countIn(f, sec); }, 0) + ')</h2>' +
+          un.map(function (f) { return esc(f.name) + ' (' + countIn(f, sec) + ')'; }).join(' · ') + '</div>';
+      }
+      html += '</div>';
+    });
+    doPrint(html);
+  }
+  function printNames() {
+    var rows = state.families.filter(function (f) { return f.status !== 'no' && peopleOf(f); }).sort(byName).map(function (f) {
+      return '<tr><td>' + esc(f.name) + '</td><td>' + (int(f.men) ? (f.menTable ? esc(tableName(f.menTable)) : '—') + ' (' + int(f.men) + ')' : '') + '</td>' +
+        '<td>' + (int(f.women) ? (f.womenTable ? esc(tableName(f.womenTable)) : '—') + ' (' + int(f.women) + ')' : '') + '</td></tr>';
+    }).join('');
+    doPrint('<div class="sec">' + printHeader('מי באיזה שולחן') +
+      '<table><thead><tr><th>שם</th><th>👨 שולחן גברים</th><th>👩 שולחן נשים</th></tr></thead><tbody>' + rows + '</tbody></table></div>');
+  }
+  function doPrint(html) {
+    $('printArea').innerHTML = html;
+    setTimeout(function () { window.print(); }, 50);
+  }
+  // ---------- שליחת הרשימות בוואטסאפ (טקסט) ----------
+  function tablesText(sec) {
+    var key = SECTIONS[sec].table, label = SECTIONS[sec].label;
+    var tables = state.tables.filter(function (t) { return t.section === sec; });
+    var seats = tables.reduce(function (s, t) { return s + int(t.cap); }, 0);
+    var seated = tables.reduce(function (s, t) { return s + seatedCount(t.id, sec); }, 0);
+    var lines = ['*סעודת שמחת תורה — שולחנות ' + label + '*', seated + ' מתוך ' + seats + ' מקומות', ''], empty = [];
+    tables.forEach(function (t) {
+      var fams = state.families.filter(function (f) { return f[key] === t.id && f.status !== 'no'; }).sort(byName);
+      if (!fams.length) { empty.push(t.name + ' (' + t.cap + ')'); return; }
+      lines.push('*' + t.name + (t.group ? ' · ' + t.group : '') + '* (' + seatedCount(t.id, sec) + '/' + t.cap + ')' + (seatedCount(t.id, sec) > t.cap ? ' ⚠️ חריגה ' + (seatedCount(t.id, sec) - t.cap) : ''));
+      fams.forEach(function (f) { lines.push('• ' + f.name + ' – ' + countIn(f, sec)); });
+      lines.push('');
+    });
+    if (empty.length) lines.push('*פנויים:* ' + empty.join(', '));
+    var un = state.families.filter(function (f) { return !f[key] && f.status === 'yes' && countIn(f, sec); }).sort(byName);
+    if (un.length) lines.push('*טרם שובצו:* ' + un.map(function (f) { return f.name + ' (' + countIn(f, sec) + ')'; }).join(', '));
+    return lines.join('\n').trim();
+  }
+  function namesText() {
+    var lines = ['*סעודת שמחת תורה — מי באיזה שולחן*', ''];
+    state.families.filter(function (f) { return f.status !== 'no' && peopleOf(f); }).sort(byName).forEach(function (f) {
+      var parts = [];
+      if (int(f.men)) parts.push('👨 ' + (f.menTable ? tableName(f.menTable) : 'טרם שובץ'));
+      if (int(f.women)) parts.push('👩 ' + (f.womenTable ? tableName(f.womenTable) : 'טרם שובץ'));
+      lines.push('• ' + f.name + ' — ' + parts.join(' | '));
+    });
+    return lines.join('\n');
+  }
+  document.querySelectorAll('[data-wa]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var w = b.getAttribute('data-wa');
+      var text = w === 'names' ? namesText() : tablesText(w);
+      window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+    });
+  });
+
+  $('printTablesBtn').addEventListener('click', printTables);
+  $('printNamesBtn').addEventListener('click', printNames);
+
+  $('unseatedList').addEventListener('change', function (e) {
+    var s = e.target; if (s.getAttribute('data-act') !== 'seat' || !s.value) return;
+    var f = findById(state.families, s.getAttribute('data-id')); if (!f) return;
+    f[SECTIONS[curSec].table] = s.value; persist(); toast(f.name + ' שובצו');
+  });
+
+  // ---------- תקציב ----------
+  $('expenseForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var name = $('eName').value.trim(), amt = num($('eAmount').value);
+    if (!name || !amt) { toast('יש להזין פריט וסכום'); return; }
+    state.expenses.push({ id: uid(), name: name, amount: amt, cat: $('eCat').value, paid: $('ePaid').value === '1' });
+    $('eName').value = ''; $('eAmount').value = ''; $('ePaid').value = '0';
+    persist(); toast('ההוצאה נוספה');
+  });
+  $('bTotal').addEventListener('change', function () { state.budget = num(this.value); persist(); });
+
+  function comingPeople() {
+    return state.families.reduce(function (s, f) { return s + (f.status === 'yes' ? peopleOf(f) : 0); }, 0);
+  }
+  function renderBudget() {
+    if (document.activeElement !== $('bTotal')) $('bTotal').value = state.budget || '';
+    var total = 0, paid = 0, html = '';
+    state.expenses.forEach(function (x) {
+      total += num(x.amount); if (x.paid) paid += num(x.amount);
+      html += '<div class="item"><div class="main"><div class="t">' + esc(x.name) + ' · ₪' + fmt(x.amount) + '</div><div class="s">' + esc(x.cat) + '</div></div>' +
+        '<div class="acts"><button type="button" class="pill ' + (x.paid ? 'p-yes' : 'p-invited') + '" data-act="paid" data-id="' + x.id + '">' + (x.paid ? 'שולם' : 'לא שולם') + '</button>' +
+        '<button type="button" class="btn sec sm" data-act="delexp" data-id="' + x.id + '">🗑️</button></div></div>';
+    });
+    $('expenseList').innerHTML = html || '<div class="empty">עדיין לא נוספו הוצאות</div>';
+    var people = comingPeople(), b = num(state.budget);
+    $('budgetBar').style.width = (b ? Math.min(100, total / b * 100) : 0) + '%';
+    $('budgetBar').className = b && total > b ? 'over' : '';
+    $('budgetSummary').innerHTML = 'הוצאות: ₪' + fmt(total) + ' · שולם: ₪' + fmt(paid) + ' · נותר לתשלום: ₪' + fmt(total - paid) +
+      (b ? '<br>' + (total > b ? '<b style="color:#fca5a5">חריגה של ₪' + fmt(total - b) + '</b>' : 'נותר בתקציב: ₪' + fmt(b - total)) : '') +
+      (people ? '<br>עלות לסועד: ₪' + fmt(total / people) + ' (' + people + ' רשומים)' : '');
+  }
+  $('expenseList').addEventListener('click', function (e) {
+    var b = closest(e.target, '[data-act]'); if (!b) return;
+    var x = findById(state.expenses, b.getAttribute('data-id')); if (!x) return;
+    if (b.getAttribute('data-act') === 'paid') { x.paid = !x.paid; persist(); }
+    if (b.getAttribute('data-act') === 'delexp' && confirm('למחוק את ' + x.name + '?')) { removeById(state.expenses, x.id); persist(); }
+  });
+
+  // ---------- גיבוי ----------
+  function restoreFrom(text) {
+    try {
+      var obj = JSON.parse(text);
+      if (!obj || !obj.families) throw new Error('bad');
+      if (!confirm('לשחזר את הגיבוי? הנתונים הנוכחיים יוחלפו.')) return;
+      state = normalize(obj);
+      persist(); toast('הגיבוי שוחזר');
+    } catch (e) { toast('קובץ הגיבוי לא תקין'); }
+  }
+  $('exportBtn').addEventListener('click', function () {
+    var blob = new Blob([JSON.stringify(state)], { type: 'application/json' });
+    var a = document.createElement('a'), d = new Date();
+    a.href = URL.createObjectURL(blob);
+    a.download = 'simchat-torah-backup-' + d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate() + '.json';
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  });
+  $('importBtn').addEventListener('click', function () { $('importFile').click(); });
+  $('importFile').addEventListener('change', function () {
+    var f = this.files && this.files[0]; if (!f) return;
+    var r = new FileReader();
+    r.onload = function () { restoreFrom(r.result); };
+    r.readAsText(f); this.value = '';
+  });
+  $('copyBtn').addEventListener('click', function () {
+    var txt = JSON.stringify(state);
+    function fallback() { $('pasteBox').value = txt; $('pasteBox').select(); try { document.execCommand('copy'); } catch (e) {} toast('הטקסט הועתק / מסומן להעתקה'); }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(function () { toast('הגיבוי הועתק'); }, fallback);
+    else fallback();
+  });
+  $('pasteBtn').addEventListener('click', function () { var t = $('pasteBox').value.trim(); if (t) restoreFrom(t); });
+  $('resetBtn').addEventListener('click', function () {
+    if (confirm('למחוק את כל הנתונים? לא ניתן לבטל.')) { state = emptyState(); persist(); toast('הנתונים נמחקו'); }
+  });
+
+  // ---------- תצוגה ----------
+  function render() {
+    var yes = state.families.filter(function (f) { return f.status === 'yes'; });
+    $('stFamilies').textContent = state.families.length;
+    $('stPeople').textContent = comingPeople();
+    $('stMen').textContent = yes.reduce(function (s, f) { return s + int(f.men); }, 0);
+    $('stWomen').textContent = yes.reduce(function (s, f) { return s + int(f.women); }, 0);
+    $('stSeated').textContent = state.families.reduce(function (s, f) {
+      return s + (f.status === 'no' ? 0 : (f.menTable ? int(f.men) : 0) + (f.womenTable ? int(f.women) : 0));
+    }, 0);
+    // משבצות מקומות: סך המקומות בשולחנות מול הרשומים, לכל מגדר
+    Object.keys(SECTIONS).forEach(function (sec) {
+      var seats = state.tables.reduce(function (s, t) { return s + (t.section === sec ? int(t.cap) : 0); }, 0);
+      var reg = yes.reduce(function (s, f) { return s + int(f[sec]); }, 0), left = seats - reg;
+      var el = $(sec === 'men' ? 'seatMen' : 'seatWomen');
+      el.className = 'stat seat' + (left < 0 ? ' short' : '');
+      el.innerHTML = '<div class="h">' + (sec === 'men' ? '👨 גברים' : '👩 נשים') + ' — ' + (left < 0 ? 'חסרים' : 'נשארו') + '</div>' +
+        '<div class="v">' + Math.abs(left) + '</div>' +
+        '<div class="l">' + seats + ' מקומות · ' + reg + ' רשומים</div>';
+    });
+    $('stSpent').textContent = fmt(state.expenses.reduce(function (s, x) { return s + num(x.amount); }, 0));
+    $('familyNames').innerHTML = state.families.slice().sort(byName).map(function (f) { return '<option value="' + esc(f.name) + '">'; }).join('');
+    renderFamilies(); renderInvites(); renderSeating(); renderBudget();
+  }
+
+  function storageReport() {
+    var mode = local ? 'זיכרון קבוע של הדפדפן (localStorage)' : session ? 'זיכרון זמני בלבד (sessionStorage) — יימחק בסגירת הלשונית' : 'זיכרון בלבד — יימחק ברענון';
+    $('storageInfo').innerHTML = 'אופן שמירה: <b>' + mode + '</b><br>סנכרון ענן: <b>' + (fbConnected ? 'מחובר' : 'לא מחובר') + '</b>' +
+      '<br>פתיחה: ' + (isFile ? 'קובץ מקומי (file://)' : esc(location.host)) +
+      (state.savedAt ? '<br>נשמר לאחרונה: ' + new Date(state.savedAt).toLocaleString('he-IL') : '');
+    if (fbConnected) {
+      // כשיש סנכרון, הנתונים נטענים מהענן גם אם הדפדפן מחק את האחסון המקומי
+      $('storageBanner').className = 'banner';
+    } else if (!local) {
+      showBanner('⚠️ הדפדפן לא מאפשר שמירה קבועה ' + (isFile ? 'כשפותחים את האפליקציה כקובץ מקומי' : 'באתר הזה') +
+        '. הנתונים עלולים להימחק כשסוגרים את הלשונית.<br>פתרון: פתחו את האפליקציה מהכתובת <b>malkielnili.github.io/simchat-torah</b>, או שמרו קובץ גיבוי בלשונית "גיבוי".');
+    } else if (isFile) {
+      showBanner('ℹ️ האפליקציה פתוחה כקובץ מקומי. בחלק מהטאבלטים (בעיקר אנדרואיד) הדפדפן מוחק את הנתונים של קבצים מקומיים בין פתיחות. ' +
+        'לשמירה בטוחה פתחו מהכתובת <b>malkielnili.github.io/simchat-torah</b>, ושמרו קובץ גיבוי בלשונית "גיבוי".');
+    }
+  }
+
+  // שמירה נוספת כשהלשונית נסגרת או עוברת לרקע (באנדרואיד הדפדפן עלול לסגור לשונית ברקע)
+  document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') saveRaw(state, true); });
+  window.addEventListener('pagehide', function () { saveRaw(state, true); });
+
+  if (autoSeatChanged()) saveRaw(state);
+  else if (state.savedAt) saveRaw(state, true);
+  resetFamilyForm();
+  storageReport();
+  render();
+  announceMoves();
+  initSync();
+
+  if ('serviceWorker' in navigator && !isFile) {
+    try { navigator.serviceWorker.register('sw.js'); } catch (e) {}
+  }
+})();
+</script>
+</body>
+</html>
