@@ -80,6 +80,7 @@
   .filter{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap;}
   .filter input{flex:1 1 160px;}
   .filter select{flex:0 0 130px;}
+  select.move-all{margin-top:8px;font-size:14px;padding:8px;color:var(--muted);}
   .seg{display:flex;gap:6px;margin-bottom:12px;}
   .seg button{flex:1;padding:10px;border-radius:10px;border:1px solid #334155;background:var(--card);color:var(--muted);font:inherit;font-weight:700;cursor:pointer;}
   .seg button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
@@ -819,9 +820,9 @@
     return names.length > 3 ? names.slice(0, 3).join(', ') + '…' : names.join(', ');
   }
 
-  function tableOptions(sec) {
-    var o = '<option value="">— שבץ לשולחן —</option>';
-    state.tables.filter(function (t) { return t.section === sec; }).forEach(function (t) {
+  function tableOptions(sec, placeholder, excludeId) {
+    var o = '<option value="">' + (placeholder || '— שבץ לשולחן —') + '</option>';
+    state.tables.filter(function (t) { return t.section === sec && t.id !== excludeId; }).forEach(function (t) {
       var who = tableFamilies(t, sec);
       o += '<option value="' + t.id + '">' + esc(t.name) + (who ? ' · ' + esc(who) : ' · פנוי') + ' (' + seatedCount(t.id, sec) + '/' + t.cap + (seatedCount(t.id, sec) > t.cap ? ' ⚠️ חריגה ' + (seatedCount(t.id, sec) - t.cap) : '') + ')</option>';
     });
@@ -854,9 +855,12 @@
           (emptyTableFor(sec, n) ? 'יש שולחן פנוי מתאים' : 'אין שולחן פנוי גדול מספיק, צריך להעביר משפחה ידנית') + '</b>' : '') + '</div></div>' +
         '<div class="acts"><button type="button" class="btn sec sm" data-act="edittable" data-id="' + t.id + '">✏️</button>' +
         '<button type="button" class="btn sec sm" data-act="deltable" data-id="' + t.id + '">🗑️</button></div></div>' +
-        '<div class="bar"><div class="' + (n > t.cap ? 'over' : '') + '" style="width:' + pct + '%"></div></div><div class="list" style="margin-top:6px">';
+        '<div class="bar"><div class="' + (n > t.cap ? 'over' : '') + '" style="width:' + pct + '%"></div></div>' +
+        (fams.length && tables.length > 1 ? '<select class="move-all" data-act="moveall" data-id="' + t.id + '">' + tableOptions(sec, '🔁 העבר / החלף את כל השולחן…', t.id) + '</select>' : '') +
+        '<div class="list" style="margin-top:6px">';
       fams.forEach(function (f) {
         html += '<div class="item"><div class="main"><div class="t">' + esc(f.name) + '</div><div class="s">' + countIn(f, sec) + ' ' + label + '</div></div>' +
+          (tables.length > 1 ? '<select data-act="movefam" data-id="' + f.id + '" style="flex:0 0 150px">' + tableOptions(sec, '↪ העבר ל…', t.id) + '</select>' : '') +
           '<button type="button" class="btn sec sm" data-act="unseat" data-id="' + f.id + '">הסר</button></div>';
       });
       html += '</div></div>';
@@ -873,6 +877,27 @@
     $('unseatedTitle').textContent = 'לא הושבו — ' + label + ' (' + un.reduce(function (s, f) { return s + countIn(f, sec); }, 0) + ')';
     $('unseatedList').innerHTML = uh || '<div class="empty">' + (state.families.length ? 'כולם הושבו 🎉' : 'אין משפחות') + '</div>';
   }
+  // החלפת שולחן למשפחה אחת, או העברת/החלפת שולחן שלם
+  $('tableList').addEventListener('change', function (e) {
+    var s = e.target, act = s.getAttribute('data-act'), sec = curSec, key = SECTIONS[sec].table;
+    if (!s.value || (act !== 'movefam' && act !== 'moveall')) return;
+    var to = findById(state.tables, s.value); if (!to) return;
+    if (act === 'movefam') {
+      var f = findById(state.families, s.getAttribute('data-id')); if (!f) return;
+      f[key] = to.id; persist(); toast(f.name + ' הועברו ל' + to.name);
+      return;
+    }
+    var from = findById(state.tables, s.getAttribute('data-id')); if (!from) return;
+    var swap = seatedCount(to.id, sec) > 0;
+    state.families.forEach(function (f) {
+      if (f[key] === from.id) f[key] = to.id;
+      else if (f[key] === to.id) f[key] = from.id;
+    });
+    var g = from.group || ''; from.group = to.group || ''; to.group = g;
+    persist();
+    toast(swap ? '🔁 ' + from.name + ' ו' + to.name + ' הוחלפו' : 'כל היושבים ב' + from.name + ' הועברו ל' + to.name);
+  });
+
   $('tableList').addEventListener('click', function (e) {
     var b = closest(e.target, '[data-act]'); if (!b) return;
     var id = b.getAttribute('data-id'), act = b.getAttribute('data-act'), sec = curSec;
