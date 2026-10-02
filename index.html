@@ -123,8 +123,12 @@
     #printArea .tcard:last-child{page-break-after:auto;}
     #printArea .tcard-num{font-size:48pt;font-weight:bold;margin-bottom:6mm;}
     #printArea .tcard-sec{font-size:16pt;color:#444;margin-bottom:10mm;}
-    #printArea .tcard-list{font-size:20pt;line-height:1.8;}
-    #printArea .tcard-list .empty{color:#777;font-size:16pt;}
+    #printArea .tcard-list{font-size:20pt;line-height:1.7;min-width:150mm;}
+    #printArea .tcard-list > div{display:flex;justify-content:space-between;align-items:baseline;gap:10mm;border-bottom:1.5px solid #000;padding:1mm 2mm;}
+    #printArea .tcard-list b{font-weight:bold;}
+    #printArea .tcard-seats{font-size:.62em;font-weight:bold;white-space:nowrap;}
+    #printArea .tcard-cap{font-size:.5em;font-weight:bold;}
+    #printArea .tcard-list .empty{color:#777;font-size:16pt;border:0;justify-content:center;}
   }
 </style>
 </head>
@@ -992,9 +996,14 @@
       var key = SECTIONS[sec].table, label = SECTIONS[sec].label;
       state.tables.filter(function (t) { return t.section === sec; }).forEach(function (t) {
         var fams = state.families.filter(function (f) { return f[key] === t.id && f.status !== 'no'; }).sort(byName);
-        html += '<div class="tcard"><div class="tcard-num">' + esc(t.name) + '</div>' +
+        // גודל השמות מותאם למספר המשפחות, כדי שהכרטיס ייכנס בעמוד אחד
+        var size = fams.length <= 6 ? 34 : fams.length <= 9 ? 28 : fams.length <= 12 ? 23 : 18;
+        html += '<div class="tcard"><div class="tcard-num">' + esc(t.name) + ' <span class="tcard-cap">· ' + int(t.cap) + ' מושבים</span></div>' +
           '<div class="tcard-sec">' + label + '</div>' +
-          '<div class="tcard-list">' + (fams.length ? fams.map(function (f) { return '<div>' + esc(f.name) + '</div>'; }).join('') : '<div class="empty">— פנוי —</div>') + '</div></div>';
+          '<div class="tcard-list" style="font-size:' + size + 'pt">' + (fams.length ? fams.map(function (f) {
+            var c = countIn(f, sec);
+            return '<div><b>' + esc(f.name) + '</b><span class="tcard-seats">' + (c === 1 ? 'מושב אחד' : c + ' מושבים') + '</span></div>';
+          }).join('') : '<div class="empty">— פנוי —</div>') + '</div></div>';
       });
     });
     doPrint(html);
