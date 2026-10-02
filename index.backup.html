@@ -212,6 +212,7 @@
       <button type="button" data-sec="men" class="active">👨 גברים</button>
       <button type="button" data-sec="women">👩 נשים</button>
     </div>
+    <button type="button" class="btn sec" id="renumberTablesBtn" style="width:100%;margin:8px 0">🔢 מספר מחדש את כל השולחנות (גברים ואז נשים)</button>
     <div class="card" id="hallSummary"></div>
     <div class="card muted">
       🪄 <b>שיבוץ אוטומטי:</b> כשנרשמות 2 משפחות או יותר עם אותו שם משפחה, הן מקבלות יחד שולחן פנוי באולם.
@@ -807,6 +808,16 @@
     $('tName').value = ''; $('tCount').value = '1';
     persist(); toast(count > 1 ? 'נוספו ' + count + ' שולחנות' : 'השולחן נוסף');
   });
+  $('renumberTablesBtn').addEventListener('click', function () {
+    if (!confirm('למספר מחדש את כל השולחנות — גברים תחילה ואז נשים? שמות השולחנות הקיימים יוחלפו במספר רציף.')) return;
+    var i = 1;
+    ['men', 'women'].forEach(function (sec) {
+      state.tables.filter(function (t) { return t.section === sec; }).forEach(function (t) {
+        t.name = 'שולחן ' + i; i++;
+      });
+    });
+    persist(); toast('השולחנות מוספרו מחדש');
+  });
 
   // שמות המשפחות שיושבות בשולחן, לתצוגה ברשימת השיבוץ
   function tableFamilies(t, sec) {
@@ -854,6 +865,7 @@
         '<div class="s">' + n + ' מתוך ' + t.cap + ' מקומות' + (n > t.cap ? ' · <b style="color:#fca5a5">⚠️ חריגה של ' + (n - t.cap) + ' — ' +
           (emptyTableFor(sec, n) ? 'יש שולחן פנוי מתאים' : 'אין שולחן פנוי גדול מספיק, צריך להעביר משפחה ידנית') + '</b>' : '') + '</div></div>' +
         '<div class="acts"><button type="button" class="btn sec sm" data-act="edittable" data-id="' + t.id + '">✏️</button>' +
+        (n === 0 ? '<button type="button" class="btn sec sm" data-act="switchsection" data-id="' + t.id + '" title="העבר לצד השני">🔁</button>' : '') +
         '<button type="button" class="btn sec sm" data-act="deltable" data-id="' + t.id + '">🗑️</button></div></div>' +
         '<div class="bar"><div class="' + (n > t.cap ? 'over' : '') + '" style="width:' + pct + '%"></div></div>' +
         (fams.length && tables.length > 1 ? '<select class="move-all" data-act="moveall" data-id="' + t.id + '">' + tableOptions(sec, '🔁 העבר / החלף את כל השולחן…', t.id) + '</select>' : '') +
@@ -906,6 +918,10 @@
       if (f) { f[SECTIONS[sec].table] = ''; f[SECTIONS[sec].manual] = true; persist(); }
     }
     var t = findById(state.tables, id); if (!t) return;
+    if (act === 'switchsection') {
+      t.section = t.section === 'men' ? 'women' : 'men';
+      persist(); toast(t.name + ' הועבר ל' + (t.section === 'men' ? 'גברים' : 'נשים'));
+    }
     if (act === 'edittable') {
       var nm = prompt('שם השולחן:', t.name); if (nm == null) return;
       var cp = prompt('מספר מקומות:', t.cap); if (cp == null) return;
@@ -950,10 +966,15 @@
     });
     doPrint(html);
   }
+  // "שולחן 5 – 3 מושבים": שם השולחן כפי שמופיע, וכמה מושבים יש למשפחה בו
+  function seatLine(f, sec) {
+    var n = int(f[sec]), id = f[SECTIONS[sec].table];
+    return (id ? tableName(id) : 'טרם שובץ') + ' – ' + (n === 1 ? 'מושב אחד' : n + ' מושבים');
+  }
   function printNames() {
     var rows = state.families.filter(function (f) { return f.status !== 'no' && peopleOf(f); }).sort(byName).map(function (f) {
-      return '<tr><td>' + esc(f.name) + '</td><td>' + (int(f.men) ? (f.menTable ? esc(tableName(f.menTable)) : '—') + ' (' + int(f.men) + ')' : '') + '</td>' +
-        '<td>' + (int(f.women) ? (f.womenTable ? esc(tableName(f.womenTable)) : '—') + ' (' + int(f.women) + ')' : '') + '</td></tr>';
+      return '<tr><td>' + esc(f.name) + '</td><td>' + (int(f.men) ? esc(seatLine(f, 'men')) : '') + '</td>' +
+        '<td>' + (int(f.women) ? esc(seatLine(f, 'women')) : '') + '</td></tr>';
     }).join('');
     doPrint('<div class="sec">' + printHeader('מי באיזה שולחן') +
       '<table><thead><tr><th>שם</th><th>👨 שולחן גברים</th><th>👩 שולחן נשים</th></tr></thead><tbody>' + rows + '</tbody></table></div>');
@@ -985,8 +1006,8 @@
     var lines = ['*סעודת שמחת תורה — מי באיזה שולחן*', ''];
     state.families.filter(function (f) { return f.status !== 'no' && peopleOf(f); }).sort(byName).forEach(function (f) {
       var parts = [];
-      if (int(f.men)) parts.push('👨 ' + (f.menTable ? tableName(f.menTable) : 'טרם שובץ'));
-      if (int(f.women)) parts.push('👩 ' + (f.womenTable ? tableName(f.womenTable) : 'טרם שובץ'));
+      if (int(f.men)) parts.push('👨 ' + seatLine(f, 'men'));
+      if (int(f.women)) parts.push('👩 ' + seatLine(f, 'women'));
       lines.push('• ' + f.name + ' — ' + parts.join(' | '));
     });
     return lines.join('\n');
