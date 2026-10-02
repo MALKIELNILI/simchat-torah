@@ -119,6 +119,12 @@
     #printArea th,#printArea td{border:1px solid #000;padding:1.5mm 2mm;text-align:right;}
     #printArea th{background:#eee;}
     #printArea tr{break-inside:avoid;}
+    #printArea .tcard{page-break-after:always;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;text-align:center;}
+    #printArea .tcard:last-child{page-break-after:auto;}
+    #printArea .tcard-num{font-size:48pt;font-weight:bold;margin-bottom:6mm;}
+    #printArea .tcard-sec{font-size:16pt;color:#444;margin-bottom:10mm;}
+    #printArea .tcard-list{font-size:20pt;line-height:1.8;}
+    #printArea .tcard-list .empty{color:#777;font-size:16pt;}
   }
 </style>
 </head>
@@ -232,6 +238,7 @@
       <div class="row">
         <button type="button" class="btn" id="printTablesBtn">רשימת שולחנות</button>
         <button type="button" class="btn sec" id="printNamesBtn">לפי שם — מי באיזה שולחן</button>
+        <button type="button" class="btn sec" id="printCardsBtn">🪑 כרטיס לכל שולחן (דף נפרד)</button>
       </div>
       <div class="muted" style="margin-top:6px">מדפיס את שני הצדדים, גברים ונשים. בטלפון אפשר לבחור "שמור כ-PDF" ולשלוח בוואטסאפ.</div>
     </div>
@@ -979,6 +986,19 @@
     doPrint('<div class="sec">' + printHeader('מי באיזה שולחן') +
       '<table><thead><tr><th>שם</th><th>👨 שולחן גברים</th><th>👩 שולחן נשים</th></tr></thead><tbody>' + rows + '</tbody></table></div>');
   }
+  function printTableCards() {
+    var html = '';
+    Object.keys(SECTIONS).forEach(function (sec) {
+      var key = SECTIONS[sec].table, label = SECTIONS[sec].label;
+      state.tables.filter(function (t) { return t.section === sec; }).forEach(function (t) {
+        var fams = state.families.filter(function (f) { return f[key] === t.id && f.status !== 'no'; }).sort(byName);
+        html += '<div class="tcard"><div class="tcard-num">' + esc(t.name) + '</div>' +
+          '<div class="tcard-sec">' + label + '</div>' +
+          '<div class="tcard-list">' + (fams.length ? fams.map(function (f) { return '<div>' + esc(f.name) + '</div>'; }).join('') : '<div class="empty">— פנוי —</div>') + '</div></div>';
+      });
+    });
+    doPrint(html);
+  }
   function doPrint(html) {
     $('printArea').innerHTML = html;
     setTimeout(function () { window.print(); }, 50);
@@ -1022,6 +1042,7 @@
 
   $('printTablesBtn').addEventListener('click', printTables);
   $('printNamesBtn').addEventListener('click', printNames);
+  $('printCardsBtn').addEventListener('click', printTableCards);
 
   $('unseatedList').addEventListener('change', function (e) {
     var s = e.target; if (s.getAttribute('data-act') !== 'seat' || !s.value) return;
